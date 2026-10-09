@@ -86,6 +86,29 @@ DivResult divmod(const Bignum& numerator, const Bignum& divisor);
 
 Bignum mod(const Bignum& value, const Bignum& modulus);
 
+Bignum gcd(const Bignum& left, const Bignum& right);
+
+// Square and multiply. Throws Error when the modulus is zero; a modulus of 1
+// gives 0, and an exponent of 0 gives 1 mod m, which is 0 there -- both are
+// cases real RSA input produces.
+Bignum modpow(const Bignum& base, const Bignum& exponent, const Bignum& modulus);
+
+// Extended Euclid. Throws Error when the modulus is zero or when the value
+// and the modulus share a factor, because then no inverse exists and
+// returning anything would be a lie.
+Bignum modinv(const Bignum& value, const Bignum& modulus);
+
+struct RootResult {
+    Bignum root;   // floor of the k-th root
+    bool exact;    // root^k == value exactly
+};
+
+// Floor of the k-th root, by Newton iteration, with `exact` saying whether the
+// value was a perfect k-th power. The RSA small-exponent attack turns entirely
+// on that flag: an inexact root means the attack does not apply, and reporting
+// the floor as an answer would be a confident wrong one.
+RootResult iroot(const Bignum& value, std::uint32_t k);
+
 Bignum shl(const Bignum& value, std::size_t bits);
 
 // Shifting past the end yields zero rather than anything undefined.

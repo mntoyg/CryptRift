@@ -435,4 +435,116 @@ DivResult divmod(const Bignum& numerator, const Bignum& divisor) {
 
 Bignum mod(const Bignum& value, const Bignum& modulus) { return divmod(value, modulus).rem; }
 
+namespace {
+
+// Repeated squaring with a small exponent, for the root check below.
+Bignum pow_small(const Bignum& base, std::uint32_t exponent) {
+    Bignum result(1);
+    Bignum factor = base;
+    while (exponent != 0) {
+        if ((exponent & 1u) != 0) result = mul(result, factor);
+        exponent >>= 1;
+        if (exponent != 0) factor = mul(factor, factor);
+    }
+    return result;
+}
+
+bool bit_set(const Bignum& value, std::size_t index) {
+    const std::size_t limb = index / 32;
+    if (limb >= value.limbs().size()) return false;
+    return ((value.limbs()[limb] >> (index % 32)) & 1u) != 0;
+}
+
+}  // namespace
+
+Bignum gcd(const Bignum& left, const Bignum& right) {
+    Bignum a = left;
+    Bignum b = right;
+    while (!b.is_zero()) {
+        Bignum remainder = mod(a, b);
+        a = b;
+        b = remainder;
+    }
+    return a;
+}
+
+Bignum modpow(const Bignum& base, const Bignum& exponent, const Bignum& modulus) {
+    if (modulus.is_zero()) throw Error("modpow needs a modulus greater than zero");
+
+    // 1 mod m, so a modulus of 1 correctly answers 0 even for exponent 0.
+    Bignum result = mod(Bignum(1), modulus);
+    Bignum square = mod(base, modulus);
+
+    const std::size_t bits = exponent.bit_length();
+    for (std::size_t index = 0; index < bits; ++index) {
+        if (bit_set(exponent, index)) result = mod(mul(result, square), modulus);
+        square = mod(mul(square, square), modulus);
+    }
+    return result;
+}
+
+Bignum modinv(const Bignum& value, const Bignum& modulus) {
+    if (modulus.is_zero()) throw Error("modinv needs a modulus greater than zero");
+
+    // Extended Euclid with the coefficients kept as residues modulo m, so an
+    // unsigned type is enough: every subtraction is done as an addition of the
+    // modulus first.
+    Bignum old_remainder = modulus;
+    Bignum remainder = mod(value, modulus);
+    Bignum old_coefficient;              // 0
+    Bignum coefficient = mod(Bignum(1), modulus);
+
+    while (!remainder.is_zero()) {
+        const DivResult step = divmod(old_remainder, remainder);
+
+        Bignum next_remainder = step.rem;
+        old_remainder = remainder;
+        remainder = next_remainder;
+
+        const Bignum scaled = mod(mul(step.quot, coefficient), modulus);
+        Bignum next_coefficient = mod(add(old_coefficient, sub(modulus, scaled)), modulus);
+        old_coefficient = coefficient;
+        coefficient = next_coefficient;
+    }
+
+    if (compare(old_remainder, Bignum(1)) != 0) {
+        throw Error("no modular inverse exists: the value and the modulus share a factor");
+    }
+    return old_coefficient;
+}
+
+RootResult iroot(const Bignum& value, std::uint32_t k) {
+    if (k == 0) throw Error("iroot needs a root of at least 1");
+    if (k == 1) return RootResult{value, true};
+    if (value.is_zero()) return RootResult{Bignum(), true};
+    if (compare(value, Bignum(1)) == 0) return RootResult{Bignum(1), true};
+
+    // Start above the answer: 2^ceil(bits / k) is at least the k-th root.
+    const std::size_t bits = value.bit_length();
+    Bignum guess = shl(Bignum(1), (bits + k - 1) / k);
+
+    // Newton, stopping when it stops decreasing. The correction loops below are
+    // what make the result exactly the floor, whatever the iteration left.
+    for (std::size_t round = 0; round < bits + 8; ++round) {
+        const Bignum lower_power = pow_small(guess, k - 1);
+        if (lower_power.is_zero()) break;
+        const Bignum next = divmod(add(mul(Bignum(k - 1), guess), divmod(value, lower_power).quot),
+                                   Bignum(k))
+                                .quot;
+        if (compare(next, guess) >= 0) break;
+        guess = next;
+    }
+    if (guess.is_zero()) guess = Bignum(1);
+
+    while (!guess.is_zero() && compare(pow_small(guess, k), value) > 0) {
+        guess = sub(guess, Bignum(1));
+    }
+    while (compare(pow_small(add(guess, Bignum(1)), k), value) <= 0) {
+        guess = add(guess, Bignum(1));
+    }
+
+    const bool exact = compare(pow_small(guess, k), value) == 0;
+    return RootResult{guess, exact};
+}
+
 }  // namespace cryptrift

@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
     run_classical_tests();
     run_bignum_arith_tests();
     run_bignum_div_tests();
+    run_bignum_mod_tests();
     run_xor_tests();
     run_xor_repeating_tests();
 

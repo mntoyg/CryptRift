@@ -15,6 +15,10 @@ using cryptrift::Bignum;
 using cryptrift::add;
 using cryptrift::compare;
 using cryptrift::divmod;
+using cryptrift::gcd;
+using cryptrift::iroot;
+using cryptrift::modinv;
+using cryptrift::modpow;
 using cryptrift::mod;
 using cryptrift::mul;
 using cryptrift::shl;
@@ -227,4 +231,80 @@ void run_bignum_div_tests() {
         const Bignum value = random_bignum(rng, 1 + (rng() % 8));
         CT_CHECK_EQ(Bignum::from_dec(value.to_dec()).to_hex(), value.to_hex());
     }
+}
+
+void run_bignum_mod_tests() {
+    CT_CHECK_EQ(gcd(Bignum(48), Bignum(18)).to_dec(), std::string("6"));
+    CT_CHECK_EQ(gcd(Bignum(17), Bignum(0)).to_dec(), std::string("17"));
+    CT_CHECK_EQ(gcd(Bignum(0), Bignum(17)).to_dec(), std::string("17"));
+    CT_CHECK_EQ(gcd(Bignum(0), Bignum(0)).to_dec(), std::string("0"));
+    CT_CHECK_EQ(gcd(Bignum(17), Bignum(13)).to_dec(), std::string("1"));
+
+    // Zero and one are where a hand-written modpow goes wrong, and every one of
+    // these shows up in real RSA input.
+    CT_CHECK_THROWS(modpow(Bignum(2), Bignum(3), Bignum(0)), cryptrift::Error);
+    CT_CHECK(modpow(Bignum(2), Bignum(10), Bignum(1)).is_zero());   // everything is 0 mod 1
+    CT_CHECK_EQ(modpow(Bignum(2), Bignum(0), Bignum(7)).to_dec(), std::string("1"));
+    CT_CHECK(modpow(Bignum(2), Bignum(0), Bignum(1)).is_zero());    // 1 mod 1, not 1
+    CT_CHECK(modpow(Bignum(0), Bignum(5), Bignum(7)).is_zero());
+    CT_CHECK_EQ(modpow(Bignum(0), Bignum(0), Bignum(7)).to_dec(), std::string("1"));
+    CT_CHECK_EQ(modpow(Bignum(4), Bignum(13), Bignum(497)).to_dec(), std::string("445"));
+    CT_CHECK_EQ(modpow(Bignum(2), Bignum(10), Bignum(1000)).to_dec(), std::string("24"));
+
+    CT_CHECK_EQ(modinv(Bignum(3), Bignum(11)).to_dec(), std::string("4"));
+    CT_CHECK_EQ(modinv(Bignum(17), Bignum(3120)).to_dec(), std::string("2753"));
+    CT_CHECK_EQ(modinv(Bignum(1), Bignum(11)).to_dec(), std::string("1"));
+    CT_CHECK_THROWS(modinv(Bignum(4), Bignum(8)), cryptrift::Error);   // gcd is 4
+    CT_CHECK_THROWS(modinv(Bignum(0), Bignum(11)), cryptrift::Error);
+    CT_CHECK_THROWS(modinv(Bignum(5), Bignum(0)), cryptrift::Error);
+
+    cryptrift::RootResult root = iroot(Bignum(1000), 3);
+    CT_CHECK_EQ(root.root.to_dec(), std::string("10"));
+    CT_CHECK(root.exact);
+
+    root = iroot(Bignum(999), 3);
+    CT_CHECK_EQ(root.root.to_dec(), std::string("9"));   // floor, not rounded
+    CT_CHECK(!root.exact);
+
+    root = iroot(Bignum(1001), 3);
+    CT_CHECK_EQ(root.root.to_dec(), std::string("10"));
+    CT_CHECK(!root.exact);
+
+    root = iroot(Bignum::from_dec("1000000000000000000000000000"), 3);
+    CT_CHECK_EQ(root.root.to_dec(), std::string("1000000000"));
+    CT_CHECK(root.exact);
+
+    CT_CHECK(iroot(Bignum(0), 3).root.is_zero());
+    CT_CHECK(iroot(Bignum(0), 3).exact);
+    CT_CHECK_EQ(iroot(Bignum(1), 7).root.to_dec(), std::string("1"));
+    CT_CHECK_EQ(iroot(Bignum(5), 1).root.to_dec(), std::string("5"));
+    CT_CHECK(iroot(Bignum(5), 1).exact);
+    CT_CHECK_EQ(iroot(Bignum(2), 3).root.to_dec(), std::string("1"));
+    CT_CHECK(!iroot(Bignum(2), 3).exact);
+    CT_CHECK_THROWS(iroot(Bignum(5), 0), cryptrift::Error);
+
+    // Exact roots at a size the RSA small-exponent attack actually meets.
+    std::mt19937_64 root_rng(20261011);
+    for (int round = 0; round < 50; ++round) {
+        const Bignum base = random_bignum(root_rng, 1 + (round % 4));
+        const Bignum cube = mul(mul(base, base), base);
+        const cryptrift::RootResult found = iroot(cube, 3);
+        CT_CHECK_EQ(found.root.to_hex(), base.to_hex());
+        CT_CHECK(found.exact);
+        CT_CHECK(!iroot(add(cube, Bignum(1)), 3).exact);
+    }
+
+    // Fermat's little theorem on the secp256k1 field prime: 2^(p-1) = 1 mod p.
+    // A 256-bit exponentiation that lands on exactly 1 is a strong signal that
+    // modpow and the division under it are right at realistic size.
+    const Bignum prime = Bignum::from_hex(
+        "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f");
+    CT_CHECK_EQ(prime.bit_length(), static_cast<std::size_t>(256));
+    CT_CHECK_EQ(modpow(Bignum(2), sub(prime, Bignum(1)), prime).to_dec(), std::string("1"));
+    CT_CHECK_EQ(modpow(Bignum(3), sub(prime, Bignum(1)), prime).to_dec(), std::string("1"));
+
+    // And an inverse at the same size, checked by multiplying it back.
+    const Bignum value = Bignum::from_hex("deadbeefcafebabe0123456789abcdef");
+    const Bignum inverse = modinv(value, prime);
+    CT_CHECK_EQ(mod(mul(value, inverse), prime).to_dec(), std::string("1"));
 }
