@@ -204,3 +204,15 @@ void run_cli_rsa_tests() {
     CT_CHECK_EQ(run_cli("rsa common-modulus --n 3233 --e1 4 --c1 2 --e2 6 --c2 3").exit_code, 2);
     CT_CHECK_EQ(run_cli("rsa decrypt --c 2790 --n 3233 --d 2753 --out-format b64").exit_code, 2);
 }
+
+void run_cli_analyze_tests() {
+    Run result = run_cli("analyze deadbeef");
+    CT_CHECK_EQ(result.exit_code, 0);
+    CT_CHECK(result.out.find("hex") != std::string::npos);
+    CT_CHECK(result.out.find("printable") != std::string::npos);
+
+    // The group takes no subcommand, so the second word is input.
+    CT_CHECK_EQ(run_cli("analyze", "the quick brown fox").exit_code, 0);
+    CT_CHECK_EQ(run_cli("analyze --in-format hex zz").exit_code, 2);
+    CT_CHECK_EQ(run_cli("analyze --in-format hex deadbeef").exit_code, 0);
+}

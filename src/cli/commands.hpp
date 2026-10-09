@@ -47,6 +47,7 @@ int cmd_rsa_smalle(const Args& args, std::istream& in, std::ostream& out, std::o
 int cmd_rsa_common_modulus(const Args& args, std::istream& in, std::ostream& out,
                            std::ostream& err);
 int cmd_rsa_wiener(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_analyze(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
 
 }  // namespace cli
 }  // namespace cryptrift

@@ -40,6 +40,7 @@ endfunction()
 # Everything the user sees is produced in src/cli.
 add_library(cryptrift_core STATIC
   src/core/bytes.cpp
+  src/core/analyze.cpp
   src/core/bignum.cpp
   src/core/classical.cpp
   src/core/codec.cpp
@@ -59,6 +60,7 @@ cryptrift_set_warnings(cryptrift_core)
 add_library(cryptrift_cli STATIC
   src/cli/args.cpp
   src/cli/binary_io.cpp
+  src/cli/cmd_analyze.cpp
   src/cli/cmd_base.cpp
   src/cli/cmd_classical.cpp
   src/cli/cmd_rsa.cpp

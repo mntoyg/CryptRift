@@ -42,6 +42,10 @@ const std::vector<Command>& all_commands() {
         {"rsa", "wiener", "rsa wiener --n N --e E",
          "Recover a private exponent that is small relative to n. Reports nothing if it cannot.",
          cmd_rsa_wiener},
+        // No subcommand: `analyze FILE` reads the second word as input.
+        {"analyze", "", "analyze [INPUT]",
+         "Report length, printable share, coincidence index and likely encodings.",
+         cmd_analyze},
     };
     return table;
 }
