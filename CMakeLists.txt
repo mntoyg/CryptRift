@@ -49,6 +49,23 @@ target_include_directories(cryptrift_core PUBLIC
 
 cryptrift_set_warnings(cryptrift_core)
 
+# The CLI lives in its own static library so the test binary can link it and
+# drive parse_args/handlers directly, instead of only through a subprocess.
+add_library(cryptrift_cli STATIC
+  src/cli/args.cpp
+  src/cli/binary_io.cpp
+  src/cli/cmd_base.cpp
+  src/cli/commands.cpp
+  src/cli/render.cpp)
+
+target_link_libraries(cryptrift_cli PUBLIC cryptrift_core)
+target_include_directories(cryptrift_cli PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+cryptrift_set_warnings(cryptrift_cli)
+
+add_executable(cryptrift src/cli/main.cpp)
+target_link_libraries(cryptrift PRIVATE cryptrift_cli)
+cryptrift_set_warnings(cryptrift)
+
 if(CRYPTRIFT_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
