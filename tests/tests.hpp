@@ -10,6 +10,7 @@ void run_cli_tests();
 void run_cli_xor_tests();
 void run_flag_tests();
 void run_score_tests();
+void run_classical_tests();
 void run_xor_tests();
 void run_xor_repeating_tests();
 

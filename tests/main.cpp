@@ -19,6 +19,7 @@ int main(int argc, char** argv) {
     run_flag_tests();
     run_cli_xor_tests();
     run_score_tests();
+    run_classical_tests();
     run_xor_tests();
     run_xor_repeating_tests();
 
