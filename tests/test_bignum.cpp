@@ -14,6 +14,8 @@
 using cryptrift::Bignum;
 using cryptrift::add;
 using cryptrift::compare;
+using cryptrift::divmod;
+using cryptrift::mod;
 using cryptrift::mul;
 using cryptrift::shl;
 using cryptrift::shr;
@@ -136,4 +138,93 @@ void run_bignum_arith_tests() {
     // design: dec and bytes-be both denote a number here.
     CT_CHECK_EQ(Bignum::from_bytes_be({0x00, 0xDE, 0xAD}).to_bytes_be(),
                 std::vector<std::uint8_t>({0xDE, 0xAD}));
+}
+
+namespace {
+
+// A random value of `limb_count` limbs, built through the public hex reader so
+// the generator itself cannot be the thing that is wrong.
+Bignum random_bignum(std::mt19937_64& rng, std::size_t limb_count) {
+    static const char* digits = "0123456789abcdef";
+    std::string hex;
+    for (std::size_t limb = 0; limb < limb_count; ++limb) {
+        for (int nibble = 0; nibble < 8; ++nibble) hex += digits[rng() & 0xF];
+    }
+    hex[0] = digits[1 + (rng() % 15)];  // keep the length honest
+    return Bignum::from_hex(hex);
+}
+
+}  // namespace
+
+void run_bignum_div_tests() {
+    // Dividing by zero is a question with no answer, so it is an error rather
+    // than a quietly wrong quotient.
+    CT_CHECK_THROWS(divmod(Bignum(1), Bignum(0)), cryptrift::Error);
+    CT_CHECK_THROWS(divmod(Bignum(0), Bignum(0)), cryptrift::Error);
+    CT_CHECK_THROWS(mod(Bignum(1), Bignum(0)), cryptrift::Error);
+
+    cryptrift::DivResult result = divmod(Bignum(0), Bignum(7));
+    CT_CHECK(result.quot.is_zero());
+    CT_CHECK(result.rem.is_zero());
+
+    result = divmod(Bignum(7), Bignum(9));  // divisor longer than the dividend
+    CT_CHECK(result.quot.is_zero());
+    CT_CHECK_EQ(result.rem.to_dec(), std::string("7"));
+
+    result = divmod(Bignum(42), Bignum(42));
+    CT_CHECK_EQ(result.quot.to_dec(), std::string("1"));
+    CT_CHECK(result.rem.is_zero());
+
+    CT_CHECK_EQ(divmod(Bignum(100), Bignum(1)).quot.to_dec(), std::string("100"));
+    CT_CHECK_EQ(mod(Bignum(100), Bignum(7)).to_dec(), std::string("2"));
+
+    // Against the built-in operators, on values both sides can hold.
+    std::mt19937_64 rng(20261010);
+    for (int round = 0; round < 5000; ++round) {
+        const std::uint64_t numerator = rng();
+        const std::uint64_t divisor = rng() | 1u;
+        const cryptrift::DivResult pair = divmod(Bignum(numerator), Bignum(divisor));
+        CT_CHECK_EQ(pair.quot.to_dec(), std::to_string(numerator / divisor));
+        CT_CHECK_EQ(pair.rem.to_dec(), std::to_string(numerator % divisor));
+    }
+
+    // Multi-limb division has no reference to compare against, so it is checked
+    // by its own definition instead: a == q*b + r, with r < b. That holds for
+    // any correct algorithm, which is what makes it the right assertion.
+    for (int round = 0; round < 500; ++round) {
+        const std::size_t numerator_limbs = 2 + (rng() % 7);
+        const std::size_t divisor_limbs = 1 + (rng() % numerator_limbs);
+        const Bignum numerator = random_bignum(rng, numerator_limbs);
+        const Bignum divisor = random_bignum(rng, divisor_limbs);
+
+        const cryptrift::DivResult pair = divmod(numerator, divisor);
+        CT_CHECK_EQ(add(mul(pair.quot, divisor), pair.rem).to_hex(), numerator.to_hex());
+        CT_CHECK(compare(pair.rem, divisor) < 0);
+    }
+
+    const Bignum big = Bignum::from_hex("fedcba9876543210fedcba9876543210f1f2f3f4");
+    const Bignum small = Bignum::from_hex("123456789abcdef0");
+    const cryptrift::DivResult checked = divmod(big, small);
+    CT_CHECK_EQ(add(mul(checked.quot, small), checked.rem).to_hex(), big.to_hex());
+    CT_CHECK(compare(checked.rem, small) < 0);
+
+    CT_CHECK_EQ(Bignum::from_dec("0").to_hex(), std::string("0"));
+    CT_CHECK_EQ(Bignum::from_dec("0009").to_dec(), std::string("9"));
+    CT_CHECK_EQ(Bignum().to_dec(), std::string("0"));
+    CT_CHECK_EQ(Bignum::from_dec("340282366920938463463374607431768211456").to_hex(),
+                std::string("100000000000000000000000000000000"));
+    CT_CHECK_EQ(Bignum::from_hex("100000000000000000000000000000000").to_dec(),
+                std::string("340282366920938463463374607431768211456"));
+    CT_CHECK_EQ(Bignum::from_dec("1 234\n").to_dec(), std::string("1234"));
+
+    CT_CHECK_THROWS(Bignum::from_dec("12a4"), cryptrift::Error);
+    CT_CHECK_THROWS(Bignum::from_dec(""), cryptrift::Error);
+    CT_CHECK_THROWS(Bignum::from_dec("-1"), cryptrift::Error);
+    CT_CHECK_THROWS(Bignum::from_dec("0x10"), cryptrift::Error);
+
+    // Decimal round-trips at a size that exercises the group-of-nine path.
+    for (int round = 0; round < 200; ++round) {
+        const Bignum value = random_bignum(rng, 1 + (rng() % 8));
+        CT_CHECK_EQ(Bignum::from_dec(value.to_dec()).to_hex(), value.to_hex());
+    }
 }

@@ -36,6 +36,11 @@ public:
     // Lowercase, no leading zeros, "0" for zero.
     std::string to_hex() const;
 
+    // Decimal, the way an RSA modulus is usually quoted. Accepts embedded
+    // whitespace; throws Error on an empty input, a sign, or any non-digit.
+    static Bignum from_dec(std::string_view text);
+    std::string to_dec() const;
+
     // Big-endian bytes, as an RSA modulus or ciphertext arrives. Both
     // directions denote a value, so a leading zero byte does not survive.
     static Bignum from_bytes_be(const std::vector<std::uint8_t>& bytes);
@@ -69,6 +74,17 @@ Bignum add(const Bignum& left, const Bignum& right);
 Bignum sub(const Bignum& left, const Bignum& right);
 
 Bignum mul(const Bignum& left, const Bignum& right);
+
+struct DivResult {
+    Bignum quot;
+    Bignum rem;
+};
+
+// Throws Error when the divisor is zero. The remainder is always smaller than
+// the divisor, which is the property the tests check division by.
+DivResult divmod(const Bignum& numerator, const Bignum& divisor);
+
+Bignum mod(const Bignum& value, const Bignum& modulus);
 
 Bignum shl(const Bignum& value, std::size_t bits);
 

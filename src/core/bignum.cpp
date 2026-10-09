@@ -3,6 +3,7 @@
 #include <cryptrift/error.hpp>
 
 #include <algorithm>
+#include <string>
 
 namespace cryptrift {
 namespace {
@@ -261,5 +262,177 @@ Bignum shr(const Bignum& value, std::size_t bits) {
     result.trim();
     return result;
 }
+
+namespace {
+
+constexpr std::uint32_t kLimbMask = 0xFFFFFFFFu;
+
+// Divides by a single limb, which the general path would handle badly: Knuth's
+// algorithm needs two divisor limbs to estimate a quotient digit.
+DivResult divmod_small(const Bignum& numerator, std::uint32_t divisor) {
+    DivResult result;
+    std::vector<std::uint32_t>& quotient = result.quot.limbs();
+    quotient.assign(numerator.limbs().size(), 0);
+
+    std::uint64_t remainder = 0;
+    for (std::size_t index = numerator.limbs().size(); index-- > 0;) {
+        const std::uint64_t current = (remainder << 32) | numerator.limbs()[index];
+        quotient[index] = static_cast<std::uint32_t>(current / divisor);
+        remainder = current % divisor;
+    }
+    result.quot.trim();
+    result.rem = Bignum(remainder);
+    return result;
+}
+
+}  // namespace
+
+Bignum Bignum::from_dec(std::string_view text) {
+    std::string digits;
+    digits.reserve(text.size());
+    for (const char character : text) {
+        if (!is_ascii_space(character)) digits += character;
+    }
+    if (digits.empty()) throw Error("expected a decimal number, got nothing");
+
+    Bignum result;
+    for (const char character : digits) {
+        if (character < '0' || character > '9') {
+            throw Error(std::string("'") + character + "' is not a decimal digit");
+        }
+        // result = result * 10 + digit, in one pass over the limbs.
+        std::uint64_t carry = static_cast<std::uint64_t>(character - '0');
+        for (std::uint32_t& limb : result.limbs_) {
+            const std::uint64_t current = static_cast<std::uint64_t>(limb) * 10 + carry;
+            limb = static_cast<std::uint32_t>(current & kLimbMask);
+            carry = current >> 32;
+        }
+        while (carry != 0) {
+            result.limbs_.push_back(static_cast<std::uint32_t>(carry & kLimbMask));
+            carry >>= 32;
+        }
+    }
+    result.trim();
+    return result;
+}
+
+std::string Bignum::to_dec() const {
+    if (limbs_.empty()) return "0";
+
+    // Nine digits at a time: 10^9 is the largest power of ten that fits in a
+    // limb, so each division yields a whole group.
+    std::vector<std::uint32_t> groups;
+    Bignum remaining = *this;
+    while (!remaining.is_zero()) {
+        const DivResult step = divmod_small(remaining, 1000000000u);
+        groups.push_back(step.rem.limbs().empty() ? 0u : step.rem.limbs().front());
+        remaining = step.quot;
+    }
+
+    std::string out = std::to_string(groups.back());
+    for (std::size_t index = groups.size() - 1; index-- > 0;) {
+        const std::string group = std::to_string(groups[index]);
+        out += std::string(9 - group.size(), '0') + group;
+    }
+    return out;
+}
+
+DivResult divmod(const Bignum& numerator, const Bignum& divisor) {
+    if (divisor.is_zero()) throw Error("division by zero");
+
+    if (compare(numerator, divisor) < 0) {
+        DivResult result;
+        result.rem = numerator;
+        return result;
+    }
+    if (divisor.limbs().size() == 1) return divmod_small(numerator, divisor.limbs().front());
+
+    // Knuth algorithm D. The divisor is first shifted so its top bit is set,
+    // which is what makes the two-limb quotient estimate below accurate to
+    // within one.
+    std::size_t shift = 0;
+    std::uint32_t top = divisor.limbs().back();
+    while ((top & 0x80000000u) == 0) {
+        top <<= 1;
+        ++shift;
+    }
+
+    const Bignum shifted_divisor = shl(divisor, shift);
+    Bignum shifted_numerator = shl(numerator, shift);
+
+    const std::vector<std::uint32_t>& v = shifted_divisor.limbs();
+    std::vector<std::uint32_t>& u = shifted_numerator.limbs();
+
+    const std::size_t n = v.size();
+    u.push_back(0);  // the extra high limb algorithm D works in
+    const std::size_t m = u.size() - n - 1;
+
+    DivResult result;
+    std::vector<std::uint32_t>& quotient = result.quot.limbs();
+    quotient.assign(m + 1, 0);
+
+    for (std::size_t j = m + 1; j-- > 0;) {
+        const std::uint64_t numerator_pair =
+            (static_cast<std::uint64_t>(u[j + n]) << 32) | u[j + n - 1];
+        std::uint64_t estimate = numerator_pair / v[n - 1];
+        std::uint64_t estimate_rem = numerator_pair % v[n - 1];
+
+        // Correct the estimate downwards; it is never off by more than two.
+        while (estimate > kLimbMask ||
+               estimate * v[n - 2] > ((estimate_rem << 32) | u[j + n - 2])) {
+            --estimate;
+            estimate_rem += v[n - 1];
+            if (estimate_rem > kLimbMask) break;
+        }
+
+        // Multiply and subtract.
+        std::int64_t borrow = 0;
+        std::uint64_t carry = 0;
+        for (std::size_t i = 0; i < n; ++i) {
+            const std::uint64_t product = estimate * v[i] + carry;
+            carry = product >> 32;
+            std::int64_t difference = static_cast<std::int64_t>(u[i + j]) -
+                                      static_cast<std::int64_t>(product & kLimbMask) - borrow;
+            if (difference < 0) {
+                difference += static_cast<std::int64_t>(kLimbBase);
+                borrow = 1;
+            } else {
+                borrow = 0;
+            }
+            u[i + j] = static_cast<std::uint32_t>(difference);
+        }
+        std::int64_t difference = static_cast<std::int64_t>(u[j + n]) -
+                                  static_cast<std::int64_t>(carry) - borrow;
+        const bool went_negative = difference < 0;
+        if (went_negative) difference += static_cast<std::int64_t>(kLimbBase);
+        u[j + n] = static_cast<std::uint32_t>(difference);
+
+        if (went_negative) {
+            // The estimate was one too large after all: add the divisor back.
+            --estimate;
+            std::uint64_t add_carry = 0;
+            for (std::size_t i = 0; i < n; ++i) {
+                const std::uint64_t sum =
+                    static_cast<std::uint64_t>(u[i + j]) + v[i] + add_carry;
+                u[i + j] = static_cast<std::uint32_t>(sum & kLimbMask);
+                add_carry = sum >> 32;
+            }
+            u[j + n] = static_cast<std::uint32_t>((u[j + n] + add_carry) & kLimbMask);
+        }
+
+        quotient[j] = static_cast<std::uint32_t>(estimate);
+    }
+
+    result.quot.trim();
+
+    // What is left in the low n limbs is the remainder, still shifted.
+    Bignum remainder;
+    remainder.limbs().assign(u.begin(), u.begin() + static_cast<std::ptrdiff_t>(n));
+    remainder.trim();
+    result.rem = shr(remainder, shift);
+    return result;
+}
+
+Bignum mod(const Bignum& value, const Bignum& modulus) { return divmod(value, modulus).rem; }
 
 }  // namespace cryptrift

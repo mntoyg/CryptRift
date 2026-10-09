@@ -13,6 +13,7 @@ void run_require_long_tests();
 void run_flag_tests();
 void run_score_tests();
 void run_bignum_arith_tests();
+void run_bignum_div_tests();
 void run_classical_tests();
 void run_xor_tests();
 void run_xor_repeating_tests();
