@@ -11,7 +11,10 @@
 #include "tests.hpp"
 
 using cryptrift::Bignum;
+using cryptrift::add;
 using cryptrift::from_string;
+using cryptrift::mul;
+using cryptrift::sub;
 
 void run_rsa_basic_tests() {
     // The textbook key, so the arithmetic can be checked against numbers anyone
@@ -54,4 +57,53 @@ void run_rsa_basic_tests() {
 
     // Decrypting from p, q and e takes the same route as decrypting from d.
     CT_CHECK_EQ(cryptrift::decrypt_with_primes(ciphertext, p, q, e).to_hex(), message.to_hex());
+}
+
+void run_rsa_attack_tests() {
+    // m^e < n, so the ciphertext is a perfect cube and the message is simply
+    // its cube root. No key needed.
+    const Bignum small_message = Bignum::from_dec(fixtures::kSmallM);
+    const Bignum cube = Bignum::from_dec(fixtures::kSmallC);
+    CT_CHECK_EQ(mul(mul(small_message, small_message), small_message).to_hex(), cube.to_hex());
+
+    const auto root = cryptrift::small_e_root(cube, 3);
+    CT_CHECK(root.has_value());
+    CT_CHECK_EQ(root->to_hex(), small_message.to_hex());
+    CT_CHECK_EQ(cryptrift::to_string(root->to_bytes_be()), std::string("flag{small_e}"));
+
+    // Not a perfect power: a no-result, not an error and above all not the
+    // floor of the root dressed up as an answer.
+    CT_CHECK(!cryptrift::small_e_root(add(cube, Bignum(1)), 3).has_value());
+    CT_CHECK(!cryptrift::small_e_root(sub(cube, Bignum(1)), 3).has_value());
+    CT_CHECK(!cryptrift::small_e_root(Bignum(2), 3).has_value());
+    CT_CHECK(cryptrift::small_e_root(Bignum(0), 3).has_value());   // 0 is 0 cubed
+    CT_CHECK(cryptrift::small_e_root(Bignum(8), 3).has_value());
+    CT_CHECK_EQ(cryptrift::small_e_root(Bignum(8), 3)->to_dec(), std::string("2"));
+    CT_CHECK_THROWS(cryptrift::small_e_root(cube, 0), cryptrift::Error);
+
+    // One modulus, two exponents, one message: the message falls out without
+    // either private key.
+    const Bignum n = Bignum::from_dec(fixtures::kN);
+    const Bignum e1(17);
+    const Bignum e2(65537);
+    const Bignum c1 = Bignum::from_dec(fixtures::kC1);
+    const Bignum c2 = Bignum::from_dec(fixtures::kC2);
+    const Bignum expected = Bignum::from_dec(fixtures::kMessage);
+
+    const Bignum recovered = cryptrift::common_modulus(n, e1, c1, e2, c2);
+    CT_CHECK_EQ(recovered.to_hex(), expected.to_hex());
+    CT_CHECK_EQ(cryptrift::to_string(recovered.to_bytes_be()), std::string("flag{common_modulus}"));
+
+    // Exponents that share a factor cannot support the attack at all. That is
+    // the caller asking for the wrong thing, so it is an error rather than an
+    // empty answer.
+    CT_CHECK_THROWS(cryptrift::common_modulus(n, Bignum(4), c1, Bignum(6), c2), cryptrift::Error);
+    CT_CHECK_THROWS(cryptrift::common_modulus(n, e1, c1, e1, c2), cryptrift::Error);
+    CT_CHECK_THROWS(cryptrift::common_modulus(Bignum(0), e1, c1, e2, c2), cryptrift::Error);
+
+    // Ciphertexts that are not a genuine pair for one message: arriving at a
+    // value here would mean the attack had "succeeded" on nonsense, so it is
+    // checked by re-encrypting before anything is returned.
+    CT_CHECK_THROWS(cryptrift::common_modulus(n, e1, add(c1, Bignum(1)), e2, c2),
+                    cryptrift::Error);
 }

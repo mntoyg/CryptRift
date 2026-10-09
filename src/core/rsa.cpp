@@ -36,4 +36,41 @@ Bignum decrypt_with_primes(const Bignum& ciphertext, const Bignum& p, const Bign
     return decrypt(ciphertext, key.d, key.n);
 }
 
+std::optional<Bignum> small_e_root(const Bignum& ciphertext, std::uint32_t e) {
+    if (e == 0) throw Error("the public exponent must not be zero");
+
+    const RootResult root = iroot(ciphertext, e);
+    if (!root.exact) return std::nullopt;
+    return root.root;
+}
+
+Bignum common_modulus(const Bignum& n, const Bignum& e1, const Bignum& c1, const Bignum& e2,
+                      const Bignum& c2) {
+    if (n.is_zero()) throw Error("the modulus must not be zero");
+    if (compare(gcd(e1, e2), Bignum(1)) != 0) {
+        throw Error("the common-modulus attack needs exponents with no common factor");
+    }
+
+    // Bezout without signed arithmetic. a = e1^-1 mod e2 gives a*e1 - 1 = k*e2
+    // for an exact k, so a*e1 + (-k)*e2 = 1, and the negative coefficient is
+    // applied by inverting its ciphertext instead of negating an exponent.
+    const Bignum a = modinv(e1, e2);
+    const DivResult step = divmod(sub(mul(a, e1), Bignum(1)), e2);
+    if (!step.rem.is_zero()) {
+        throw Error("could not build the exponent relation for these exponents");
+    }
+    const Bignum k = step.quot;
+
+    const Bignum left = modpow(c1, a, n);
+    const Bignum right = modpow(modinv(c2, n), k, n);
+    const Bignum recovered = mod(mul(left, right), n);
+
+    // The check that makes this safe to act on: a genuine pair re-encrypts to
+    // the ciphertext we were given.
+    if (compare(modpow(recovered, e1, n), mod(c1, n)) != 0) {
+        throw Error("these ciphertexts are not a common-modulus pair for one message");
+    }
+    return recovered;
+}
+
 }  // namespace cryptrift
