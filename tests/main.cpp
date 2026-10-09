@@ -1,9 +1,16 @@
 #include <iostream>
 
+#include "cli_runner.hpp"
 #include "ct_test.hpp"
 #include "tests.hpp"
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        std::cerr << "usage: ct_tests <path-to-cryptrift-binary>\n";
+        return 2;
+    }
+    set_cli_binary(argv[1]);
+
     run_error_tests();
     run_bytes_tests();
     run_codec_tests();

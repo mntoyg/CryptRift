@@ -9,23 +9,17 @@ add_executable(ct_tests
   test_cli.cpp)
 
 target_link_libraries(ct_tests PRIVATE cryptrift_cli)
-target_include_directories(ct_tests PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(ct_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 cryptrift_set_warnings(ct_tests)
 
-# The CLI tests run the real binary, so it has to be built first. Its path
-# reaches the test through a generated header rather than a -D define: on
-# Windows that path is full of backslashes, which a plain string literal would
-# read as escape sequences. A raw string literal sidesteps it.
+# The CLI tests run the real binary, so it has to be built first, and it has to
+# say where it is. The path arrives as the test program's argv[1]: a
+# multi-config generator resolves $<TARGET_FILE> differently per configuration,
+# so baking it into a generated header makes CMake refuse to write one file with
+# several contents.
 add_dependencies(ct_tests cryptrift)
-file(GENERATE
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cryptrift_bin_path.hpp"
-  CONTENT "#pragma once
-#define CRYPTRIFT_BIN R\"($<TARGET_FILE:cryptrift>)\"
-")
 
-add_test(NAME unit COMMAND ct_tests)
+add_test(NAME unit COMMAND ct_tests $<TARGET_FILE:cryptrift>)
 
 # A harness that cannot report a failure would make every test above it
 # meaningless, so one test checks exactly that: ct_selftest fails on purpose,

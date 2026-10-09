@@ -3,14 +3,18 @@
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
-
-#include "cryptrift_bin_path.hpp"  // generated: defines CRYPTRIFT_BIN
+#include <utility>
 
 #ifndef _WIN32
 #include <sys/wait.h>
 #endif
 
 namespace {
+
+std::string& binary_path() {
+    static std::string path;
+    return path;
+}
 
 std::string slurp(const char* path) {
     std::ifstream file(path, std::ios::binary);
@@ -26,14 +30,21 @@ void spill(const char* path, const std::string& data) {
 
 }  // namespace
 
+void set_cli_binary(std::string path) { binary_path() = std::move(path); }
+
 Run run_cli(const std::string& args, const std::string& stdin_data) {
+    if (binary_path().empty()) {
+        // Better a loud failure than a suite that silently tests nothing.
+        return Run{-1, "", "run_cli: the cryptrift binary path was never set\n"};
+    }
+
     const char* stdin_path = "ct_cli_stdin.tmp";
     const char* stdout_path = "ct_cli_stdout.tmp";
     const char* stderr_path = "ct_cli_stderr.tmp";
 
     spill(stdin_path, stdin_data);
 
-    const std::string command = std::string("\"") + CRYPTRIFT_BIN + "\" " + args + " > " +
+    const std::string command = std::string("\"") + binary_path() + "\" " + args + " > " +
                                 stdout_path + " 2> " + stderr_path + " < " + stdin_path;
     const int status = std::system(command.c_str());
 
