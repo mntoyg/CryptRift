@@ -1,5 +1,6 @@
 #include <cryptrift/codec.hpp>
 
+#include <cryptrift/bignum.hpp>
 #include <cryptrift/error.hpp>
 
 #include <cstdint>
@@ -192,9 +193,11 @@ Bytes decode(Format format, std::string_view text) {
         case Format::b64: return decode_grouped(text, kBase64Alphabet, 64, 6, 4, "base64");
         case Format::b32: return decode_grouped(text, kBase32Alphabet, 32, 5, 8, "base32");
         case Format::bin: return decode_bits(text);
-        case Format::dec: break;
+        // dec is a big-integer conversion, so it delegates to bignum rather
+        // than carrying a second implementation of the same arithmetic.
+        case Format::dec: return Bignum::from_dec(text).to_bytes_be();
     }
-    throw Error("decimal format requires the bignum module");
+    throw Error("unknown format");
 }
 
 std::string encode(Format format, const Bytes& data) {
@@ -204,9 +207,9 @@ std::string encode(Format format, const Bytes& data) {
         case Format::b64: return encode_grouped(data, kBase64Alphabet, 6, 4);
         case Format::b32: return encode_grouped(data, kBase32Alphabet, 5, 8);
         case Format::bin: return encode_bits(data);
-        case Format::dec: break;
+        case Format::dec: return Bignum::from_bytes_be(data).to_dec();
     }
-    throw Error("decimal format requires the bignum module");
+    throw Error("unknown format");
 }
 
 }  // namespace cryptrift

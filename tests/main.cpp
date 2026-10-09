@@ -14,6 +14,7 @@ int main(int argc, char** argv) {
     run_error_tests();
     run_bytes_tests();
     run_codec_tests();
+    run_codec_dec_tests();
     run_args_tests();
     run_cli_tests();
     run_flag_tests();

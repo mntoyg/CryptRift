@@ -39,8 +39,13 @@ void run_cli_tests() {
     CT_CHECK_EQ(run_cli("help base").exit_code, 0);
     CT_CHECK_EQ(run_cli("").exit_code, 2);  // no arguments is a usage error
 
-    // dec is a big-integer conversion and waits for the bignum module.
-    CT_CHECK_EQ(run_cli("base conv --in-format dec --out-format hex 42").exit_code, 2);
+    // dec arrived with the bignum module: one non-negative integer in decimal.
+    Run decimal = run_cli("base conv --in-format dec --out-format hex 255");
+    CT_CHECK_EQ(decimal.exit_code, 0);
+    CT_CHECK_EQ(decimal.out, std::string("ff"));
+    decimal = run_cli("base conv --in-format hex --out-format dec ff");
+    CT_CHECK_EQ(decimal.out, std::string("255"));
+    CT_CHECK_EQ(run_cli("base conv --in-format dec --out-format hex 12a").exit_code, 2);
 }
 
 void run_cli_xor_tests() {

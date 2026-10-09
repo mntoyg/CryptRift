@@ -3,8 +3,8 @@
 // raw is bytes as-is. hex, b64, b32 and bin are character-per-group encodings.
 // dec is the odd one out: it reads the whole input as a single non-negative
 // big-endian integer in decimal, which is how RSA moduli and ciphertexts arrive
-// in challenges, so a value's leading zeroes do not survive a round trip
-// through it.
+// in challenges. It denotes a value rather than a byte string, so a leading
+// zero byte does not survive a round trip through it.
 #ifndef CRYPTRIFT_CODEC_HPP
 #define CRYPTRIFT_CODEC_HPP
 

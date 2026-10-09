@@ -1,6 +1,7 @@
 #include <cryptrift/codec.hpp>
 
 #include <cryptrift/bytes.hpp>
+#include <cryptrift/bignum.hpp>
 #include <cryptrift/error.hpp>
 
 #include <cstdint>
@@ -68,8 +69,6 @@ void run_codec_tests() {
     CT_CHECK_EQ(decode(Format::hex, ""), Bytes{});
     CT_CHECK_EQ(encode(Format::hex, Bytes{}), std::string(""));
 
-    // dec waits for the bignum module.
-    CT_CHECK_THROWS(decode(Format::dec, "42"), cryptrift::Error);
 
     CT_CHECK(!format_from_name("rot13").has_value());
     for (const auto format : {Format::raw, Format::hex, Format::b64, Format::b32, Format::bin,
@@ -83,4 +82,33 @@ void run_codec_tests() {
         CT_CHECK_EQ(decode(format, encode(format, blob)), blob);
         CT_CHECK_EQ(decode(format, encode(format, Bytes{})), Bytes{});
     }
+}
+
+void run_codec_dec_tests() {
+    // dec denotes a value, not a byte string: one non-negative integer written
+    // in decimal, which is how an RSA modulus or ciphertext arrives.
+    CT_CHECK_EQ(decode(Format::dec, "256"), Bytes({0x01, 0x00}));
+    CT_CHECK_EQ(encode(Format::dec, Bytes({0x01, 0x00})), std::string("256"));
+    CT_CHECK_EQ(decode(Format::dec, "255"), Bytes({0xFF}));
+    CT_CHECK_EQ(encode(Format::dec, Bytes({0xFF})), std::string("255"));
+
+    CT_CHECK_EQ(decode(Format::dec, "0"), Bytes{});  // zero carries no bytes
+    CT_CHECK_EQ(encode(Format::dec, Bytes{}), std::string("0"));
+    CT_CHECK_EQ(decode(Format::dec, " 1 234\n"), decode(Format::dec, "1234"));
+
+    CT_CHECK_THROWS(decode(Format::dec, "-1"), cryptrift::Error);
+    CT_CHECK_THROWS(decode(Format::dec, "12a"), cryptrift::Error);
+    CT_CHECK_THROWS(decode(Format::dec, ""), cryptrift::Error);
+    CT_CHECK_THROWS(decode(Format::dec, "0x10"), cryptrift::Error);
+
+    CT_CHECK_EQ(encode(Format::dec, decode(Format::hex, "ff00ff00ff00ff00ff")),
+                cryptrift::Bignum::from_hex("ff00ff00ff00ff00ff").to_dec());
+
+    // Because it denotes a value, a leading zero byte does not survive the
+    // round trip. That is deliberate, and it is why dec stays out of the
+    // round-trip loop above, whose blob starts with 0x00.
+    CT_CHECK_EQ(decode(Format::dec, encode(Format::dec, Bytes({0x00, 0xDE, 0xAD}))),
+                Bytes({0xDE, 0xAD}));
+    CT_CHECK_EQ(decode(Format::dec, encode(Format::dec, Bytes({0xDE, 0xAD}))),
+                Bytes({0xDE, 0xAD}));
 }
