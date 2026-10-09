@@ -1,7 +1,8 @@
 # One test binary for the whole suite; each task appends its test_*.cpp here.
 add_executable(ct_tests
   main.cpp
-  test_error.cpp)
+  test_error.cpp
+  test_bytes.cpp)
 
 target_link_libraries(ct_tests PRIVATE cryptrift_core)
 target_include_directories(ct_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

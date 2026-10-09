@@ -39,6 +39,7 @@ endfunction()
 # The core library holds pure functions only: no argv, no streams, no exit.
 # Everything the user sees is produced in src/cli.
 add_library(cryptrift_core STATIC
+  src/core/bytes.cpp
   src/core/version.cpp)
 
 target_include_directories(cryptrift_core PUBLIC
