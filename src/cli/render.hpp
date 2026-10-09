@@ -4,6 +4,7 @@
 #define CRYPTRIFT_CLI_RENDER_HPP
 
 #include <cryptrift/bytes.hpp>
+#include <cryptrift/classical.hpp>
 #include <cryptrift/xor_tool.hpp>
 
 #include <cstddef>
@@ -22,6 +23,11 @@ void write_raw(std::ostream& out, const Bytes& data);
 // bytes shown as dots. The key is printed because knowing *why* a candidate
 // won is half the answer.
 void render_candidates(std::ostream& out, const std::vector<Candidate>& hits, std::size_t top);
+
+// The same table for a classical cipher, whose key is two small numbers
+// rather than a byte string.
+void render_classical(std::ostream& out, const std::vector<ClassicalCandidate>& hits,
+                      std::size_t top);
 
 // The preview form of a blob, used by every table.
 std::string preview(const Bytes& data, std::size_t width);

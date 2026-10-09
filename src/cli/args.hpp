@@ -55,6 +55,10 @@ double flag_min_printable(const Args& args);     // --min-printable, default 0.9
 bool flag_quiet(const Args& args);               // -q / --quiet
 std::size_t flag_size(const Args& args, const std::string& flag, std::size_t fallback);
 
+// A required signed whole number, such as --shift or --a. Throws Error when
+// absent, empty, or trailed by anything that is not a digit.
+long require_long(const Args& args, const std::string& flag);
+
 int run(const std::vector<std::string>& argv_tail, std::istream& in, std::ostream& out,
         std::ostream& err);
 

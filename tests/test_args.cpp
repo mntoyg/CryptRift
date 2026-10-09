@@ -18,6 +18,7 @@ using cryptrift::cli::flag_top;
 using cryptrift::cli::has_flag;
 using cryptrift::cli::parse_args;
 using cryptrift::cli::require;
+using cryptrift::cli::require_long;
 using cryptrift::cli::require_format;
 
 void run_args_tests() {
@@ -80,4 +81,18 @@ void run_flag_tests() {
                     cryptrift::Error);
     // A trailing suffix is junk, not a number: "10x" must not quietly read 10.
     CT_CHECK_THROWS(flag_top(parse_args({"xor", "crack", "--top", "10x"})), cryptrift::Error);
+}
+
+void run_require_long_tests() {
+    const Args args = parse_args({"caesar", "apply", "--shift", "-3"});
+    CT_CHECK_EQ(require_long(args, "--shift"), -3L);
+    CT_CHECK_EQ(require_long(parse_args({"affine", "apply", "--a", "11"}), "--a"), 11L);
+
+    CT_CHECK_THROWS(require_long(args, "--a"), cryptrift::Error);  // absent
+    CT_CHECK_THROWS(require_long(parse_args({"caesar", "apply", "--shift", "xyz"}), "--shift"),
+                    cryptrift::Error);
+    CT_CHECK_THROWS(require_long(parse_args({"caesar", "apply", "--shift", "3x"}), "--shift"),
+                    cryptrift::Error);
+    CT_CHECK_THROWS(require_long(parse_args({"caesar", "apply", "--shift="}), "--shift"),
+                    cryptrift::Error);
 }

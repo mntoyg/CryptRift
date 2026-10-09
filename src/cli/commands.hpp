@@ -35,6 +35,11 @@ int cmd_base_conv(const Args& args, std::istream& in, std::ostream& out, std::os
 int cmd_xor_apply(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
 int cmd_xor_crack(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
 int cmd_xor_crib(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_caesar_apply(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_caesar_crack(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_affine_apply(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_affine_decrypt(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_affine_crack(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
 
 }  // namespace cli
 }  // namespace cryptrift

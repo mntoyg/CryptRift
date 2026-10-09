@@ -105,3 +105,41 @@ void run_cli_xor_tests() {
     CT_CHECK_EQ(run_cli("xor crack --min-printable high abc").exit_code, 2);
     CT_CHECK_EQ(run_cli("xor crack --top 1 --in-format hex " + flag_hex).exit_code, 0);
 }
+
+void run_cli_classical_tests() {
+    // Multi-word input arrives on stdin: run_cli refuses quotes, because
+    // cmd.exe would strip the command's outer pair and mangle the line.
+    Run result = run_cli("caesar apply --shift 3", "attack at dawn");
+    CT_CHECK_EQ(result.exit_code, 0);
+    CT_CHECK_EQ(result.out, std::string("dwwdfn dw gdzq"));
+
+    CT_CHECK_EQ(run_cli("caesar crack -q", "dwwdfn dw gdzq").out, std::string("attack at dawn"));
+    CT_CHECK_EQ(run_cli("caesar apply --shift -3", "dwwdfn dw gdzq").out,
+                std::string("attack at dawn"));
+
+    // "This is a test message for the cracker" shifted by 3.
+    const std::string shifted = "Wklv lv d whvw phvvdjh iru wkh fudfnhu";
+    result = run_cli("affine crack", shifted);
+    CT_CHECK_EQ(result.exit_code, 0);
+    CT_CHECK(result.out.find("a=1") != std::string::npos);  // the key, not just the text
+    CT_CHECK(result.out.find("b=3") != std::string::npos);
+    CT_CHECK_EQ(run_cli("affine crack -q", shifted).out,
+                std::string("This is a test message for the cracker"));
+
+    result = run_cli("affine apply --a 5 --b 8", "the eagle has landed");
+    CT_CHECK_EQ(result.exit_code, 0);
+    CT_CHECK_EQ(run_cli("affine decrypt --a 5 --b 8", result.out).out,
+                std::string("the eagle has landed"));
+
+    // Usage errors, each for its own reason.
+    CT_CHECK_EQ(run_cli("affine apply --a 13 --b 0", "abc").exit_code, 2);  // not coprime with 26
+    CT_CHECK_EQ(run_cli("affine apply --b 3", "abc").exit_code, 2);         // --a missing
+    CT_CHECK_EQ(run_cli("affine apply --a 5", "abc").exit_code, 2);         // --b missing
+    CT_CHECK_EQ(run_cli("caesar apply --shift xyz", "abc").exit_code, 2);
+    CT_CHECK_EQ(run_cli("caesar apply", "abc").exit_code, 2);               // --shift missing
+
+    // Found nothing: a shift cannot make control bytes printable.
+    result = run_cli("caesar crack --in-format hex 000102");
+    CT_CHECK_EQ(result.exit_code, 1);
+    CT_CHECK_EQ(result.out, std::string(""));
+}

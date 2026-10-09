@@ -18,6 +18,8 @@ int main(int argc, char** argv) {
     run_cli_tests();
     run_flag_tests();
     run_cli_xor_tests();
+    run_cli_classical_tests();
+    run_require_long_tests();
     run_score_tests();
     run_classical_tests();
     run_xor_tests();

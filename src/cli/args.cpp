@@ -133,6 +133,21 @@ std::size_t flag_size(const Args& args, const std::string& flag, std::size_t fal
 
 std::size_t flag_top(const Args& args) { return flag_size(args, "--top", 10); }
 
+long require_long(const Args& args, const std::string& flag) {
+    const std::string text = require(args, flag);
+    std::size_t consumed = 0;
+    long value = 0;
+    try {
+        value = std::stol(text, &consumed);
+    } catch (const std::exception&) {
+        throw Error(flag + " wants a whole number, got " + text);
+    }
+    if (consumed != text.size()) {
+        throw Error(flag + " wants a whole number, got " + text);
+    }
+    return value;
+}
+
 double flag_min_printable(const Args& args) {
     const auto found = args.flags.find("--min-printable");
     if (found == args.flags.end()) return 0.9;

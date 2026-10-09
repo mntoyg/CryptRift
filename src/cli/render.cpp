@@ -52,5 +52,24 @@ void render_candidates(std::ostream& out, const std::vector<Candidate>& hits, st
     }
 }
 
+void render_classical(std::ostream& out, const std::vector<ClassicalCandidate>& hits,
+                      std::size_t top) {
+    const std::size_t shown = (top == 0 || top > hits.size()) ? hits.size() : top;
+
+    out << "rank  key                   score  plaintext" << "\n";
+    for (std::size_t index = 0; index < shown; ++index) {
+        const ClassicalCandidate& hit = hits[index];
+        std::ostringstream score;
+        score << std::fixed << std::setprecision(2) << hit.score;
+
+        std::ostringstream key;
+        key << "a=" << hit.a << " b=" << hit.b;
+
+        out << std::setw(4) << (index + 1) << "  " << std::left << std::setw(20) << key.str()
+            << std::right << std::setw(7) << score.str() << "  " << preview(hit.plaintext, 48)
+            << "\n";
+    }
+}
+
 }  // namespace cli
 }  // namespace cryptrift
