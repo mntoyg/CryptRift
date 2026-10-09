@@ -43,6 +43,7 @@ add_library(cryptrift_core STATIC
   src/core/bignum.cpp
   src/core/classical.cpp
   src/core/codec.cpp
+  src/core/rsa.cpp
   src/core/score.cpp
   src/core/xor_tool.cpp
   src/core/version.cpp)

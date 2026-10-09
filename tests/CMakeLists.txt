@@ -10,7 +10,8 @@ add_executable(ct_tests
   test_score.cpp
   test_xor.cpp
   test_classical.cpp
-  test_bignum.cpp)
+  test_bignum.cpp
+  test_rsa.cpp)
 
 target_link_libraries(ct_tests PRIVATE cryptrift_cli)
 target_include_directories(ct_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
