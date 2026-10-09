@@ -1,0 +1,80 @@
+// RSA test vectors, in decimal.
+//
+// Generated once with a Miller-Rabin prime search and checked in, rather than
+// generated at test time: a fixed vector makes a failure reproducible, and the
+// numbers were verified independently before being written here. The
+// properties that matter, all confirmed outside this repository:
+//
+//   * P and Q are 256-bit primes, so N is 512 bits
+//   * D is the private exponent for e = 65537, and the encrypt/decrypt cycle
+//     round-trips Message
+//   * gcd(17, Phi) == 1, so C1 and C2 form a genuine common-modulus pair for
+//     exponents 17 and 65537, and the attack on them was run in advance
+//   * SmallC is exactly SmallM cubed and is smaller than N, so the cube root is
+//     exact and the small-exponent attack applies
+//   * WienerD is 127 bits, below the one-third-of-the-fourth-root bound that
+//     Wiener's attack needs, while the key above is far outside it
+#ifndef CRYPTRIFT_TESTS_RSA_FIXTURES_HPP
+#define CRYPTRIFT_TESTS_RSA_FIXTURES_HPP
+
+namespace fixtures {
+
+inline constexpr const char* kP =
+    "108236914054124255285969554724150694922507698874247873345954178712047422"
+    "663851";
+
+inline constexpr const char* kQ =
+    "667262991837117832354075556015757639775275368301524286235711209933211541"
+    "84147";
+
+inline constexpr const char* kN =
+    "722224870989719373414464781889241643829253271172788678590188122047733595"
+    "633923543443073047289183353251932544711212342347087348624955531358962614"
+    "5334170097";
+
+inline constexpr const char* kPhi =
+    "722224870989719373414464781889241643829253271172788678590188122047733595"
+    "633906047121749263685331215540899972065322338823516908594758578828992077"
+    "6757322100";
+
+inline constexpr const char* kD =
+    "329975118056138779592433571327792888615275809065517362757312707912710179"
+    "807834486915277449418341892166885390902115549863322501702135528417176706"
+    "0110235373";
+
+inline constexpr const char* kMessage =
+    "584734024210303453259396890104442264140234716029";
+
+inline constexpr const char* kC1 =
+    "188913975192878174819782732673410173021696005702853812701022596763252384"
+    "548808909161284931070777830730076882221786417994974122553034248940857192"
+    "7047849293";
+
+inline constexpr const char* kC2 =
+    "399218221511911242953804496588582245324998989533670999380863101590940649"
+    "839847467174855709275787208059516747084771460989039312302856045216080898"
+    "7177485798";
+
+inline constexpr const char* kSmallM =
+    "8114814712001184988838563374461";
+
+inline constexpr const char* kSmallC =
+    "534362316273970181549588003507266739265499754799160081099504986457180500"
+    "546068085545023534181";
+
+inline constexpr const char* kWienerN =
+    "769173302215090521325081757087149688735782653420631866119447300163017943"
+    "744479649113280150034930519220941625724163930346065740994041405273679441"
+    "8859707257";
+
+inline constexpr const char* kWienerE =
+    "584871193904583646889712515507886300221893832392237177581977841065793343"
+    "978002718381919427546246948822786529172019946285753087667669751679112632"
+    "1499536725";
+
+inline constexpr const char* kWienerD =
+    "96693666748411648170487079542552441117";
+
+}  // namespace fixtures
+
+#endif  // CRYPTRIFT_TESTS_RSA_FIXTURES_HPP

@@ -1,0 +1,10 @@
+build/
+cmake-build-*/
+.vs/
+.idea/
+*.user
+
+# Scratch workspace for the plan-execution skills; never part of the project.
+.superpowers/
+# Scratch files the CLI tests write in whatever directory CTest runs in.
+ct_cli_*.tmp
