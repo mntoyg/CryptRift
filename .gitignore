@@ -1,0 +1,8 @@
+build/
+cmake-build-*/
+.vs/
+.idea/
+*.user
+
+# Scratch workspace for the plan-execution skills; never part of the project.
+.superpowers/
