@@ -6,7 +6,8 @@ add_executable(ct_tests
   test_bytes.cpp
   test_codec.cpp
   test_args.cpp
-  test_cli.cpp)
+  test_cli.cpp
+  test_score.cpp)
 
 target_link_libraries(ct_tests PRIVATE cryptrift_cli)
 target_include_directories(ct_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

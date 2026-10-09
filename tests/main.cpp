@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     run_codec_tests();
     run_args_tests();
     run_cli_tests();
+    run_score_tests();
 
     const int failures = ct::failures();
     if (failures == 0) {

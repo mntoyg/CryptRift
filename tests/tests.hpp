@@ -7,5 +7,6 @@ void run_bytes_tests();
 void run_codec_tests();
 void run_args_tests();
 void run_cli_tests();
+void run_score_tests();
 
 #endif  // CRYPTRIFT_TESTS_TESTS_HPP

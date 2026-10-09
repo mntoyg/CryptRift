@@ -41,6 +41,7 @@ endfunction()
 add_library(cryptrift_core STATIC
   src/core/bytes.cpp
   src/core/codec.cpp
+  src/core/score.cpp
   src/core/version.cpp)
 
 target_include_directories(cryptrift_core PUBLIC
