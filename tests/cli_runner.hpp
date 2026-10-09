@@ -20,8 +20,11 @@ struct Run {
 // configuration by a multi-config generator, and CMake refuses that.
 void set_cli_binary(std::string path);
 
-// `args` is appended to the binary's path as a shell command line, so it may
-// contain quotes. `stdin_data` is fed on standard input.
+// `args` is appended to the binary's path as a shell command line and must NOT
+// contain a double quote: cmd.exe strips the first and last quote of a command
+// string that begins with one, which mangles the whole line. run_cli refuses
+// such a call rather than letting the test quietly measure nothing. Multi-word
+// input goes through `stdin_data` instead.
 Run run_cli(const std::string& args, const std::string& stdin_data = "");
 
 #endif  // CRYPTRIFT_TESTS_CLI_RUNNER_HPP

@@ -8,6 +8,7 @@
 #include <cryptrift/bytes.hpp>
 #include <cryptrift/codec.hpp>
 
+#include <cstddef>
 #include <iosfwd>
 #include <map>
 #include <string>
@@ -45,6 +46,14 @@ Format require_format(const Args& args, const std::string& flag, Format fallback
 // Resolves the three input sources in order: a positional value, then --in
 // FILE, then the stream. A positional of "-" also means the stream.
 Bytes load_input(const Args& args, Format in_format, std::istream& stdin_stream);
+
+// Option values shared by every ranked command. Each throws Error on a value
+// that does not parse completely or falls outside its range: "--top 10x" is a
+// mistake to report, not a 10 to assume.
+std::size_t flag_top(const Args& args);          // --top, default 10, 0 means all
+double flag_min_printable(const Args& args);     // --min-printable, default 0.9, in [0, 1]
+bool flag_quiet(const Args& args);               // -q / --quiet
+std::size_t flag_size(const Args& args, const std::string& flag, std::size_t fallback);
 
 int run(const std::vector<std::string>& argv_tail, std::istream& in, std::ostream& out,
         std::ostream& err);

@@ -17,6 +17,14 @@ namespace cryptrift {
 struct Candidate {
     Bytes key;
     Bytes plaintext;
+    // english_score(plaintext), less one point per key byte.
+    //
+    // The penalty is not cosmetic. A longer key has more free bytes, so solving
+    // each column independently can push a longer key's plaintext to a higher
+    // raw score than the true key while producing gibberish: measured on a
+    // 69-byte ciphertext with a 4-byte key, three over-fitted keys of 15, 16
+    // and 15 bytes scored 142.6, 142.0 and 141.8 against the real answer's
+    // 141.2. Charging for key length makes the extra bytes pay for themselves.
     double score;
 };
 

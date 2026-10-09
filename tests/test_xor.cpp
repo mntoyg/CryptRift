@@ -121,6 +121,17 @@ void run_xor_repeating_tests() {
     CT_CHECK_EQ(narrowed.front().key, key);
     CT_CHECK_EQ(narrowed.front().plaintext, plain);
 
+    // A short ciphertext is where over-fitting bites: with only 69 bytes, three
+    // keys of 15 and 16 bytes scored above the real 4-byte key on raw English
+    // score alone. The length penalty is what puts the real answer back on top.
+    const Bytes short_plain =
+        from_string("The art of cryptanalysis is the art of noticing what does not belong.");
+    const auto short_hits =
+        crack_repeating(apply_repeating(short_plain, key), cryptrift::KeyLenRange{2, 20}, 0.9, 5);
+    CT_CHECK(!short_hits.empty());
+    CT_CHECK_EQ(short_hits.front().key, key);
+    CT_CHECK_EQ(short_hits.front().plaintext, short_plain);
+
     CT_CHECK(crack_repeating(Bytes{}, cryptrift::KeyLenRange{2, 20}, 0.9, 5).empty());
     // Data shorter than the smallest key length leaves nothing to measure.
     CT_CHECK(crack_repeating(from_string("ab"), cryptrift::KeyLenRange{8, 20}, 0.9, 5).empty());

@@ -16,6 +16,8 @@ int main(int argc, char** argv) {
     run_codec_tests();
     run_args_tests();
     run_cli_tests();
+    run_flag_tests();
+    run_cli_xor_tests();
     run_score_tests();
     run_xor_tests();
     run_xor_repeating_tests();

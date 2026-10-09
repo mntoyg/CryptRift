@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <istream>
+#include <stdexcept>
 #include <ostream>
 #include <set>
 
@@ -109,6 +110,48 @@ Bytes load_input(const Args& args, Format in_format, std::istream& stdin_stream)
     }
     return decode(in_format, to_string(read_stream(stdin_stream)));
 }
+
+std::size_t flag_size(const Args& args, const std::string& flag, std::size_t fallback) {
+    const auto found = args.flags.find(flag);
+    if (found == args.flags.end()) return fallback;
+
+    const std::string& text = found->second;
+    std::size_t consumed = 0;
+    unsigned long long value = 0;
+    try {
+        if (!text.empty() && text[0] == '-') throw std::invalid_argument("negative");
+        value = std::stoull(text, &consumed);
+    } catch (const std::exception&) {
+        throw Error(flag + " wants a non-negative whole number, got '" + text + "'");
+    }
+    // A partially consumed value is junk: "10x" is not 10.
+    if (consumed != text.size()) {
+        throw Error(flag + " wants a non-negative whole number, got '" + text + "'");
+    }
+    return static_cast<std::size_t>(value);
+}
+
+std::size_t flag_top(const Args& args) { return flag_size(args, "--top", 10); }
+
+double flag_min_printable(const Args& args) {
+    const auto found = args.flags.find("--min-printable");
+    if (found == args.flags.end()) return 0.9;
+
+    const std::string& text = found->second;
+    std::size_t consumed = 0;
+    double value = 0.0;
+    try {
+        value = std::stod(text, &consumed);
+    } catch (const std::exception&) {
+        throw Error("--min-printable wants a ratio between 0 and 1, got '" + text + "'");
+    }
+    if (consumed != text.size() || !(value >= 0.0 && value <= 1.0)) {
+        throw Error("--min-printable wants a ratio between 0 and 1, got '" + text + "'");
+    }
+    return value;
+}
+
+bool flag_quiet(const Args& args) { return has_flag(args, "-q") || has_flag(args, "--quiet"); }
 
 int run(const std::vector<std::string>& argv_tail, std::istream& in, std::ostream& out,
         std::ostream& err) {

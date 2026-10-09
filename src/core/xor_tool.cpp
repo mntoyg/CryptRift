@@ -67,7 +67,7 @@ std::vector<Candidate> crack_single_byte(const Bytes& data, double min_printable
         const Bytes key{static_cast<std::uint8_t>(value)};
         Bytes plaintext = apply_repeating(data, key);
         if (printable_ratio(plaintext) < min_printable) continue;
-        const double score = english_score(plaintext);
+        const double score = english_score(plaintext) - static_cast<double>(key.size());
         hits.push_back(Candidate{key, std::move(plaintext), score});
     }
 
@@ -153,7 +153,9 @@ std::vector<Candidate> crack_repeating(const Bytes& data, KeyLenRange range,
 
         Bytes plaintext = apply_repeating(data, key);
         if (printable_ratio(plaintext) < min_printable) continue;
-        const double score = english_score(plaintext);
+        // One point per key byte: see Candidate::score. Without this an
+        // over-fitted long key outranks the real one on short ciphertexts.
+        const double score = english_score(plaintext) - static_cast<double>(key.size());
         hits.push_back(Candidate{std::move(key), std::move(plaintext), score});
     }
 

@@ -32,6 +32,9 @@ const Command* find_command(std::string_view group, std::string_view command);
 
 // One declaration per handler, defined in the matching cmd_*.cpp.
 int cmd_base_conv(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_xor_apply(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_xor_crack(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_xor_crib(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
 
 }  // namespace cli
 }  // namespace cryptrift

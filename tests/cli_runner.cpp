@@ -33,6 +33,10 @@ void spill(const char* path, const std::string& data) {
 void set_cli_binary(std::string path) { binary_path() = std::move(path); }
 
 Run run_cli(const std::string& args, const std::string& stdin_data) {
+    if (args.find('"') != std::string::npos) {
+        return Run{-1, "",
+                   "run_cli: double quotes in args are not portable; pass the value on stdin\n"};
+    }
     if (binary_path().empty()) {
         // Better a loud failure than a suite that silently tests nothing.
         return Run{-1, "", "run_cli: the cryptrift binary path was never set\n"};
