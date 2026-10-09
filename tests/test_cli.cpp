@@ -2,6 +2,7 @@
 #include <string>
 
 #include "cli_runner.hpp"
+#include "rsa_fixtures.hpp"
 #include "ct_test.hpp"
 #include "tests.hpp"
 
@@ -147,4 +148,59 @@ void run_cli_classical_tests() {
     result = run_cli("caesar crack --in-format hex 000102");
     CT_CHECK_EQ(result.exit_code, 1);
     CT_CHECK_EQ(result.out, std::string(""));
+}
+
+void run_cli_rsa_tests() {
+    // The textbook key, so the expected output is checkable by hand.
+    Run result = run_cli("rsa params --p 61 --q 53 --e 17");
+    CT_CHECK_EQ(result.exit_code, 0);
+    CT_CHECK(result.out.find("3233") != std::string::npos);   // n
+    CT_CHECK(result.out.find("3120") != std::string::npos);   // phi
+    CT_CHECK(result.out.find("2753") != std::string::npos);   // d
+
+    CT_CHECK_EQ(run_cli("rsa encrypt --m 65 --e 17 --n 3233").out, std::string("2790\n"));
+    CT_CHECK_EQ(run_cli("rsa decrypt --c 2790 --n 3233 --d 2753").out, std::string("65\n"));
+    // The same answer from the factors instead of the private exponent.
+    CT_CHECK_EQ(run_cli("rsa decrypt --c 2790 --p 61 --q 53 --e 17").out, std::string("65\n"));
+
+    // Hex input, with or without the prefix on output.
+    CT_CHECK_EQ(run_cli("rsa encrypt --m 0x41 --e 17 --n 3233").exit_code, 0);
+    CT_CHECK_EQ(run_cli("rsa decrypt --c 2790 --n 3233 --d 2753 --out-format hex").out,
+                std::string("41\n"));
+
+    // End to end, which is what the tool is for: a number in, a flag out.
+    CT_CHECK_EQ(run_cli(std::string("rsa smalle --c ") + fixtures::kSmallC +
+                        " --e 3 --out-format raw")
+                    .out,
+                std::string("flag{small_e}"));
+    CT_CHECK_EQ(run_cli(std::string("rsa common-modulus --n ") + fixtures::kN + " --e1 17 --c1 " +
+                        fixtures::kC1 + " --e2 65537 --c2 " + fixtures::kC2 + " --out-format raw")
+                    .out,
+                std::string("flag{common_modulus}"));
+
+    // Gave up honestly: exit 1, a word on stderr, nothing on stdout.
+    result = run_cli("rsa wiener --n 3233 --e 17");
+    CT_CHECK_EQ(result.exit_code, 1);
+    CT_CHECK_EQ(result.out, std::string(""));
+    CT_CHECK(result.err.find("no") != std::string::npos);
+
+    CT_CHECK_EQ(run_cli("rsa smalle --c 8 --e 3").out, std::string("2\n"));
+    result = run_cli("rsa smalle --c 9 --e 3");
+    CT_CHECK_EQ(result.exit_code, 1);   // 9 is not a perfect cube
+    CT_CHECK_EQ(result.out, std::string(""));
+
+    // And the weak key really is recovered through the CLI.
+    result = run_cli(std::string("rsa wiener --n ") + fixtures::kWienerN + " --e " +
+                     fixtures::kWienerE);
+    CT_CHECK_EQ(result.exit_code, 0);
+    CT_CHECK_EQ(result.out, std::string(fixtures::kWienerD) + "\n");
+
+    // Usage errors, each for its own reason.
+    CT_CHECK_EQ(run_cli("rsa params --p 61 --q 53 --e 2").exit_code, 2);    // gcd(2, phi) = 2
+    CT_CHECK_EQ(run_cli("rsa params --p 61 --q 53").exit_code, 2);          // --e missing
+    CT_CHECK_EQ(run_cli("rsa params --p 61 --q 53 --e 0x1g").exit_code, 2);
+    CT_CHECK_EQ(run_cli("rsa params --p 61 --q 53 --e 12a").exit_code, 2);
+    CT_CHECK_EQ(run_cli("rsa decrypt --c 2790 --n 3233").exit_code, 2);     // no d, no p/q/e
+    CT_CHECK_EQ(run_cli("rsa common-modulus --n 3233 --e1 4 --c1 2 --e2 6 --c2 3").exit_code, 2);
+    CT_CHECK_EQ(run_cli("rsa decrypt --c 2790 --n 3233 --d 2753 --out-format b64").exit_code, 2);
 }

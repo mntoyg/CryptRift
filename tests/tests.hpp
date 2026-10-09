@@ -9,6 +9,7 @@ void run_codec_tests();
 void run_args_tests();
 void run_cli_tests();
 void run_cli_classical_tests();
+void run_cli_rsa_tests();
 void run_cli_xor_tests();
 void run_require_long_tests();
 void run_flag_tests();

@@ -61,6 +61,7 @@ add_library(cryptrift_cli STATIC
   src/cli/binary_io.cpp
   src/cli/cmd_base.cpp
   src/cli/cmd_classical.cpp
+  src/cli/cmd_rsa.cpp
   src/cli/cmd_xor.cpp
   src/cli/commands.cpp
   src/cli/render.cpp)

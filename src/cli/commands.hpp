@@ -40,6 +40,13 @@ int cmd_caesar_crack(const Args& args, std::istream& in, std::ostream& out, std:
 int cmd_affine_apply(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
 int cmd_affine_decrypt(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
 int cmd_affine_crack(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_rsa_params(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_rsa_encrypt(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_rsa_decrypt(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_rsa_smalle(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
+int cmd_rsa_common_modulus(const Args& args, std::istream& in, std::ostream& out,
+                           std::ostream& err);
+int cmd_rsa_wiener(const Args& args, std::istream& in, std::ostream& out, std::ostream& err);
 
 }  // namespace cli
 }  // namespace cryptrift

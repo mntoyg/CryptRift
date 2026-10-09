@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
     run_flag_tests();
     run_cli_xor_tests();
     run_cli_classical_tests();
+    run_cli_rsa_tests();
     run_require_long_tests();
     run_score_tests();
     run_rsa_basic_tests();
