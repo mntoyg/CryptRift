@@ -18,6 +18,7 @@ int main(int argc, char** argv) {
     run_cli_tests();
     run_score_tests();
     run_xor_tests();
+    run_xor_repeating_tests();
 
     const int failures = ct::failures();
     if (failures == 0) {

@@ -30,6 +30,36 @@ Bytes apply_repeating(const Bytes& data, const Bytes& key);
 std::vector<Candidate> crack_single_byte(const Bytes& data, double min_printable,
                                          std::size_t limit);
 
+struct KeyLenRange {
+    std::size_t min = 2;
+    std::size_t max = 40;
+};
+
+// Candidate key lengths, most likely first, by mean normalised Hamming
+// distance between consecutive blocks: the right length makes consecutive
+// blocks look like English xored with English, which is far less noisy than
+// two unrelated byte strings. Lengths that do not fit twice into the data are
+// skipped, because one block pair measures nothing.
+std::vector<std::size_t> guess_key_lengths(const Bytes& data, KeyLenRange range,
+                                           std::size_t top);
+
+// Guesses the length, then solves each column of the transposed ciphertext as
+// single-byte XOR. Ties are broken towards the shorter key: a key twice the
+// real length produces the same plaintext and the same score, so without that
+// rule rank 1 would be arbitrary.
+std::vector<Candidate> crack_repeating(const Bytes& data, KeyLenRange range,
+                                       double min_printable, std::size_t limit);
+
+struct CribHit {
+    std::size_t offset;
+    Bytes key_fragment;
+};
+
+// Every offset where the crib fits, with the key bytes that would put it there.
+// Throws Error on an empty crib; returns nothing when the crib is longer than
+// the ciphertext.
+std::vector<CribHit> crib_drag(const Bytes& cipher, const Bytes& crib);
+
 }  // namespace cryptrift
 
 #endif  // CRYPTRIFT_XOR_TOOL_HPP

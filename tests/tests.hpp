@@ -9,5 +9,6 @@ void run_args_tests();
 void run_cli_tests();
 void run_score_tests();
 void run_xor_tests();
+void run_xor_repeating_tests();
 
 #endif  // CRYPTRIFT_TESTS_TESTS_HPP
