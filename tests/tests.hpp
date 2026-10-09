@@ -4,5 +4,6 @@
 
 void run_error_tests();
 void run_bytes_tests();
+void run_codec_tests();
 
 #endif  // CRYPTRIFT_TESTS_TESTS_HPP

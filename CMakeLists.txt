@@ -40,6 +40,7 @@ endfunction()
 # Everything the user sees is produced in src/cli.
 add_library(cryptrift_core STATIC
   src/core/bytes.cpp
+  src/core/codec.cpp
   src/core/version.cpp)
 
 target_include_directories(cryptrift_core PUBLIC

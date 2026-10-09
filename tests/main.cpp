@@ -6,6 +6,7 @@
 int main() {
     run_error_tests();
     run_bytes_tests();
+    run_codec_tests();
 
     const int failures = ct::failures();
     if (failures == 0) {
