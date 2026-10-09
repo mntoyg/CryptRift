@@ -40,6 +40,7 @@ endfunction()
 # Everything the user sees is produced in src/cli.
 add_library(cryptrift_core STATIC
   src/core/bytes.cpp
+  src/core/bignum.cpp
   src/core/classical.cpp
   src/core/codec.cpp
   src/core/score.cpp
