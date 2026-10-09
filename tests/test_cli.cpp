@@ -216,3 +216,16 @@ void run_cli_analyze_tests() {
     CT_CHECK_EQ(run_cli("analyze --in-format hex zz").exit_code, 2);
     CT_CHECK_EQ(run_cli("analyze --in-format hex deadbeef").exit_code, 0);
 }
+
+void run_cli_help_tests() {
+    // Every group the README documents must answer `help <group>`. This is what
+    // keeps the documented surface and the real surface from drifting apart.
+    for (const char* group : {"base", "xor", "caesar", "affine", "rsa", "analyze"}) {
+        const Run result = run_cli(std::string("help ") + group);
+        CT_CHECK_EQ(result.exit_code, 0);
+        CT_CHECK(!result.out.empty());
+        CT_CHECK(result.out.find(group) != std::string::npos);
+    }
+    // And a group that does not exist is a usage error, not empty help.
+    CT_CHECK_EQ(run_cli("help nonsense").exit_code, 2);
+}

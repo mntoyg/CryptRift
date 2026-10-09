@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
     run_cli_classical_tests();
     run_cli_rsa_tests();
     run_cli_analyze_tests();
+    run_cli_help_tests();
     run_analyze_tests();
     run_require_long_tests();
     run_score_tests();

@@ -23,7 +23,7 @@ int cmd_analyze(const Args& args, std::istream& in, std::ostream& out, std::ostr
     out << "printable         " << std::fixed << std::setprecision(3) << report.printable_ratio
         << "\n";
     out << "coincidence index " << std::fixed << std::setprecision(5)
-        << report.index_of_coincidence << "  (English prose is around 0.072, flat data 0.003)\n";
+        << report.index_of_coincidence << "  (English prose is around 0.06-0.07, flat data 0.003)\n";
 
     out << "looks like        ";
     if (report.likely_encodings.empty()) {
