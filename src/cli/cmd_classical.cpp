@@ -41,7 +41,7 @@ int report(const std::vector<ClassicalCandidate>& hits, const Args& args, std::o
 }  // namespace
 
 int cmd_caesar_apply(const Args& args, std::istream& in, std::ostream& out, std::ostream&) {
-    const int shift = static_cast<int>(require_long(args, "--shift"));
+    const int shift = require_int(args, "--shift");
     return write_result(caesar(input_of(args, in), shift), args, out);
 }
 
@@ -51,14 +51,14 @@ int cmd_caesar_crack(const Args& args, std::istream& in, std::ostream& out, std:
 }
 
 int cmd_affine_apply(const Args& args, std::istream& in, std::ostream& out, std::ostream&) {
-    const int multiplier = static_cast<int>(require_long(args, "--a"));
-    const int offset = static_cast<int>(require_long(args, "--b"));
+    const int multiplier = require_int(args, "--a");
+    const int offset = require_int(args, "--b");
     return write_result(affine_encrypt(input_of(args, in), multiplier, offset), args, out);
 }
 
 int cmd_affine_decrypt(const Args& args, std::istream& in, std::ostream& out, std::ostream&) {
-    const int multiplier = static_cast<int>(require_long(args, "--a"));
-    const int offset = static_cast<int>(require_long(args, "--b"));
+    const int multiplier = require_int(args, "--a");
+    const int offset = require_int(args, "--b");
     return write_result(affine_decrypt(input_of(args, in), multiplier, offset), args, out);
 }
 

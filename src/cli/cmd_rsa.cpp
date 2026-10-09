@@ -84,11 +84,13 @@ int cmd_rsa_decrypt(const Args& args, std::istream&, std::ostream& out, std::ost
 
 int cmd_rsa_smalle(const Args& args, std::istream&, std::ostream& out, std::ostream& err) {
     const Bignum ciphertext = flag_bignum(args, "--c");
-    const long e = require_long(args, "--e");
-    if (e <= 0) throw Error("--e must be a positive whole number");
+    // Range-checked rather than narrowed: 4294967297 would otherwise become 1,
+    // and iroot(c, 1) returns c as an exact root, so the tool would hand the
+    // ciphertext back as if it were the message.
+    const std::uint32_t e = require_u32(args, "--e");
+    if (e == 0) throw Error("--e must be a positive whole number");
 
-    const std::optional<Bignum> message =
-        small_e_root(ciphertext, static_cast<std::uint32_t>(e));
+    const std::optional<Bignum> message = small_e_root(ciphertext, e);
     if (!message.has_value()) {
         // The ciphertext is not a perfect power, so the attack does not apply.
         // Reporting the floor of the root would be a confident wrong answer.

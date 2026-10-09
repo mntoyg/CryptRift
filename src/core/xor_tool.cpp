@@ -88,7 +88,10 @@ std::vector<std::size_t> guess_key_lengths(const Bytes& data, KeyLenRange range,
 
     for (std::size_t length = (range.min == 0 ? 1 : range.min); length <= range.max; ++length) {
         // A length needs at least two whole blocks to compare.
-        if (length * 2 > data.size()) break;
+        if (length > data.size() / 2) break;  // not length*2 > size: that
+                                             // multiplication wraps at 2^63 and the
+                                             // guard would never fire, reading past
+                                             // the end of the data
         const std::size_t pairs = data.size() / length - 1;
         if (pairs == 0) continue;
 

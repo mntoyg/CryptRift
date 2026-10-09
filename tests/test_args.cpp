@@ -4,6 +4,8 @@
 #include <cryptrift/error.hpp>
 
 #include <cstddef>
+#include <cstdint>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -95,4 +97,56 @@ void run_require_long_tests() {
                     cryptrift::Error);
     CT_CHECK_THROWS(require_long(parse_args({"caesar", "apply", "--shift="}), "--shift"),
                     cryptrift::Error);
+}
+
+void run_write_failure_tests() {
+    // A failed write must not be reported as success. Without this check the
+    // tool exits 0 having emitted truncated output, which matters most for the
+    // pipeline the spec is built around: `-q | base64 -d`.
+    std::istringstream in("");
+    std::ostringstream out;
+    std::ostringstream err;
+    out.setstate(std::ios::badbit);
+
+    const int code = cryptrift::cli::run(
+        {"base", "conv", "--in-format", "hex", "--out-format", "hex", "4d7a"}, in, out, err);
+    CT_CHECK(code != cryptrift::cli::kOk);
+    CT_CHECK(err.str().find("write") != std::string::npos);
+
+    // And a healthy stream still reports success.
+    std::istringstream in_ok("");
+    std::ostringstream out_ok;
+    std::ostringstream err_ok;
+    CT_CHECK_EQ(cryptrift::cli::run(
+                    {"base", "conv", "--in-format", "hex", "--out-format", "hex", "4d7a"}, in_ok,
+                    out_ok, err_ok),
+                cryptrift::cli::kOk);
+    CT_CHECK_EQ(out_ok.str(), std::string("4d7a"));
+}
+
+void run_require_int_tests() {
+    CT_CHECK_EQ(cryptrift::cli::require_int(parse_args({"caesar", "apply", "--shift", "-3"}),
+                                            "--shift"),
+                -3);
+    CT_CHECK_EQ(cryptrift::cli::require_int(parse_args({"affine", "apply", "--a", "11"}), "--a"),
+                11);
+    CT_CHECK_EQ(cryptrift::cli::require_u32(parse_args({"rsa", "smalle", "--e", "3"}), "--e"),
+                static_cast<std::uint32_t>(3));
+
+    // Values outside the target type are rejected rather than narrowed. On a
+    // 64-bit long, 4294967297 would otherwise become 1.
+    CT_CHECK_THROWS(
+        cryptrift::cli::require_int(parse_args({"caesar", "apply", "--shift", "4294967296"}),
+                                    "--shift"),
+        cryptrift::Error);
+    CT_CHECK_THROWS(
+        cryptrift::cli::require_u32(parse_args({"rsa", "smalle", "--e", "4294967297"}), "--e"),
+        cryptrift::Error);
+    CT_CHECK_THROWS(
+        cryptrift::cli::require_u32(parse_args({"rsa", "smalle", "--e", "-1"}), "--e"),
+        cryptrift::Error);
+    CT_CHECK_THROWS(
+        cryptrift::cli::require_int(parse_args({"caesar", "apply", "--shift", "9999999999999999999999"}),
+                                    "--shift"),
+        cryptrift::Error);
 }

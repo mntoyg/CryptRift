@@ -229,3 +229,68 @@ void run_cli_help_tests() {
     // And a group that does not exist is a usage error, not empty help.
     CT_CHECK_EQ(run_cli("help nonsense").exit_code, 2);
 }
+
+void run_cli_strict_option_tests() {
+    const std::string flag_hex =
+        "0e323f7a3c363b3d7a33297a3c363b3d212235280533290534352e053f343928232a2e33353427";
+
+    // An unknown or misspelled option must be a usage error. Before this was
+    // enforced, `--quiett` swallowed the following `--in-format`, so the tool
+    // decoded the literal string "hex" as raw, cracked three bytes, printed a
+    // confident ranked table and exited 0. That is this project's own named
+    // failure shape, reachable by one typo.
+    Run result = run_cli("xor crack --quiett --in-format hex " + flag_hex);
+    CT_CHECK_EQ(result.exit_code, 2);
+    CT_CHECK_EQ(result.out, std::string(""));
+    CT_CHECK(result.err.find("quiett") != std::string::npos);  // names the offender
+
+    // A typo must never silently restore a filter the user disabled.
+    CT_CHECK_EQ(run_cli("xor crack --min-printabl 0 --in-format hex 00010203fcfdfe").exit_code, 2);
+    CT_CHECK_EQ(run_cli("base conv --in-format hex --out-format b64 --banana 4d7a").exit_code, 2);
+
+    // An option that belongs to a different command is just as wrong.
+    CT_CHECK_EQ(run_cli("base conv --key-hex 5a --in-format hex 4d7a").exit_code, 2);
+    CT_CHECK_EQ(run_cli("rsa params --p 61 --q 53 --e 17 --top 3").exit_code, 2);
+    CT_CHECK_EQ(run_cli("analyze --top 3 deadbeef").exit_code, 2);
+
+    // And every option a command does declare still works.
+    CT_CHECK_EQ(run_cli("base conv --in-format hex --out-format b64 4d7a").exit_code, 0);
+    CT_CHECK_EQ(run_cli("xor crack -q --top 2 --min-printable 0.5 --in-format hex " + flag_hex)
+                    .exit_code,
+                0);
+    CT_CHECK_EQ(run_cli("xor crack --keylen-min 2 --keylen-max 8 -q --in-format hex " + flag_hex)
+                    .exit_code,
+                0);
+    CT_CHECK_EQ(run_cli("rsa decrypt --c 2790 --n 3233 --d 2753 --out-format hex").exit_code, 0);
+    CT_CHECK_EQ(run_cli("affine apply --a 5 --b 8 --out-format hex", "abc").exit_code, 0);
+    CT_CHECK_EQ(run_cli("xor crib --crib flag{ --crib-format raw --top 2 --in-format hex " +
+                        flag_hex)
+                    .exit_code,
+                0);
+}
+
+void run_cli_absurd_value_tests() {
+    // A key length beyond the data must not read past the end of it. This used
+    // to segfault: length * 2 wrapped to 0, so the guard never fired and
+    // data.size() / length - 1 underflowed to SIZE_MAX.
+    Run result = run_cli(
+        "xor crack --keylen-min 9223372036854775808 --keylen-max 9223372036854775809 "
+        "--in-format hex 3b38393b38393b38393b3839");
+    CT_CHECK_EQ(result.exit_code, 2);
+    CT_CHECK_EQ(result.out, std::string(""));
+    CT_CHECK_EQ(run_cli("xor crack --keylen-min 500 --in-format hex 3b3839").exit_code, 2);
+
+    // A mistyped exponent must answer, not hang. --e here is far larger than
+    // the ciphertext has bits, so the root can only be 0 or 1.
+    result = run_cli("rsa smalle --c 8 --e 2147483647");
+    CT_CHECK_EQ(result.exit_code, 1);
+    CT_CHECK(result.err.find("no exact root") != std::string::npos);
+
+    // An exponent that does not fit the type it is narrowed to must be
+    // rejected, not silently truncated: 4294967297 would become 1, and the
+    // tool would hand back the ciphertext as if it were the message.
+    CT_CHECK_EQ(run_cli("rsa smalle --c 9 --e 4294967297").exit_code, 2);
+    CT_CHECK_EQ(run_cli("caesar apply --shift 4294967296", "abc").exit_code, 2);
+    CT_CHECK_EQ(run_cli("affine apply --a 4294967297 --b 0", "abc").exit_code, 2);
+    CT_CHECK_EQ(run_cli("caesar apply --shift 99999999999999999999", "abc").exit_code, 2);
+}

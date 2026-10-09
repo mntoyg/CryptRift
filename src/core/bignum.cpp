@@ -521,6 +521,15 @@ RootResult iroot(const Bignum& value, std::uint32_t k) {
 
     // Start above the answer: 2^ceil(bits / k) is at least the k-th root.
     const std::size_t bits = value.bit_length();
+
+    // value < 2^k, so the root is below 2 and Newton has nothing to do.
+    // Reaching the iteration with k near 2^31 would raise a guess to that
+    // power, a number of billions of bits, and the tool would hang while
+    // allocating rather than report that the attack does not apply.
+    if (static_cast<std::uint64_t>(k) >= static_cast<std::uint64_t>(bits)) {
+        return RootResult{Bignum(1), compare(value, Bignum(1)) == 0};
+    }
+
     Bignum guess = shl(Bignum(1), (bits + k - 1) / k);
 
     // Newton, stopping when it stops decreasing. The correction loops below are

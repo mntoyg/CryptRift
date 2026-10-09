@@ -22,6 +22,11 @@ struct Command {
     const char* command;  // "" for a group that takes no subcommand
     const char* usage;
     const char* summary;
+    // Every option this command accepts, space separated. run() rejects
+    // anything else: an unknown flag would otherwise be taken as a flag that
+    // consumes the next token, so a single typo could swallow the real option
+    // after it and produce a confident wrong answer at exit 0.
+    const char* options;
     Handler handler;
 };
 

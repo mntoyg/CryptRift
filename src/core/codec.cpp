@@ -130,10 +130,22 @@ std::string encode_grouped(const Bytes& data, const char* alphabet, int bits_per
 
 Bytes decode_grouped(std::string_view text, const char* alphabet, int alphabet_size,
                      int bits_per_character, std::size_t group_characters, const char* label) {
-    const std::string symbols = strip_spaces(text);
-    if (symbols.size() % group_characters != 0) {
-        throw Error(std::string(label) + " input length is not a multiple of " +
-                    std::to_string(group_characters));
+    std::string symbols = strip_spaces(text);
+
+    // Supply missing trailing padding. An unpadded blob is one of the most
+    // common CTF pastes, and the '=' characters are layout rather than
+    // content -- the same reasoning that accepts a wrapped blob or a leading
+    // 0x. A remainder that encodes no whole byte, or that wastes a whole
+    // character, is not explicable as missing padding and is still an error.
+    const std::size_t remainder = symbols.size() % group_characters;
+    if (remainder != 0) {
+        const std::size_t bits = remainder * static_cast<std::size_t>(bits_per_character);
+        if (bits / 8 == 0 || bits % 8 >= static_cast<std::size_t>(bits_per_character)) {
+            throw Error(std::string(label) + " input length is not a multiple of " +
+                        std::to_string(group_characters) +
+                        " and cannot be explained by missing padding");
+        }
+        symbols.append(group_characters - remainder, '=');
     }
 
     const std::size_t padding = trailing_padding(symbols);

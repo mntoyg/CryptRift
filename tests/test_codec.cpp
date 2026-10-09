@@ -53,8 +53,14 @@ void run_codec_tests() {
     CT_CHECK_THROWS(decode(Format::hex, "abc"), cryptrift::Error);   // odd length
     CT_CHECK_THROWS(decode(Format::hex, "zz"), cryptrift::Error);
     CT_CHECK_THROWS(decode(Format::b64, "Zm9!"), cryptrift::Error);
-    CT_CHECK_THROWS(decode(Format::b64, "Zm9"), cryptrift::Error);   // bad padding
-    CT_CHECK_THROWS(decode(Format::b32, "MZXW6YTBOI"), cryptrift::Error);
+    // Missing trailing padding is NOT an error -- see run_codec_unpadded_tests.
+    // These two decode to "fo" and "foobar". Changed deliberately after review:
+    // an unpadded blob is an ordinary paste, and rejecting it cost a solved
+    // challenge to protect nothing.
+    CT_CHECK_EQ(decode(Format::b64, "Zm9"), from_string("fo"));
+    CT_CHECK_EQ(decode(Format::b32, "MZXW6YTBOI"), from_string("foobar"));
+    // A length no amount of padding could explain is still rejected.
+    CT_CHECK_THROWS(decode(Format::b64, "Zm9vY"), cryptrift::Error);
     CT_CHECK_THROWS(decode(Format::bin, "0101"), cryptrift::Error);  // not a whole byte
     CT_CHECK_THROWS(decode(Format::bin, "01021010"), cryptrift::Error);
 
@@ -111,4 +117,29 @@ void run_codec_dec_tests() {
                 Bytes({0xDE, 0xAD}));
     CT_CHECK_EQ(decode(Format::dec, encode(Format::dec, Bytes({0xDE, 0xAD}))),
                 Bytes({0xDE, 0xAD}));
+}
+
+void run_codec_unpadded_tests() {
+    // Unpadded base64 and base32 are an extremely common CTF paste, and the
+    // same reasoning that accepts a wrapped blob or a leading 0x applies: the
+    // padding is layout, not content. Missing trailing padding is supplied;
+    // a length that no amount of padding could explain is still an error.
+    CT_CHECK_EQ(decode(Format::b64, "Zm9vYmE"), from_string("fooba"));   // 7 chars
+    CT_CHECK_EQ(decode(Format::b64, "Zm9vYg"), from_string("foob"));     // 6 chars
+    CT_CHECK_EQ(decode(Format::b64, "Zm9v"), from_string("foo"));
+    CT_CHECK_EQ(decode(Format::b64, "Zm8"), from_string("fo"));
+    CT_CHECK_EQ(decode(Format::b32, "MZXW6YTBOI"), from_string("foobar"));
+    CT_CHECK_EQ(decode(Format::b32, "MZXQ"), from_string("fo"));
+
+    // Padded and unpadded must agree.
+    CT_CHECK_EQ(decode(Format::b64, "Zm8"), decode(Format::b64, "Zm8="));
+    CT_CHECK_EQ(decode(Format::b32, "MZXW6YTBOI"), decode(Format::b32, "MZXW6YTBOI======"));
+
+    // A remainder of one character encodes no byte at all, so it is still an
+    // error rather than a silently dropped character.
+    CT_CHECK_THROWS(decode(Format::b64, "Zm9vY"), cryptrift::Error);
+    CT_CHECK_THROWS(decode(Format::b32, "MZXW6YTBO"), cryptrift::Error);
+    CT_CHECK_THROWS(decode(Format::b32, "MZX"), cryptrift::Error);
+    // Content is still strict.
+    CT_CHECK_THROWS(decode(Format::b64, "Zm9!"), cryptrift::Error);
 }

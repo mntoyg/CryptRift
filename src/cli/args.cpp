@@ -34,6 +34,27 @@ bool group_exists(const std::string& group) {
     return false;
 }
 
+// Does `flag` appear in this space-separated list of option names?
+bool option_declared(const char* declared, const std::string& flag) {
+    const std::string list = std::string(" ") + declared + " ";
+    return list.find(" " + flag + " ") != std::string::npos;
+}
+
+// An unknown flag is a usage error, not a flag to ignore. The parser treats any
+// dash-led token as taking the next argument, so a misspelled option swallows
+// the real one after it; `xor crack --quiett --in-format hex <blob>` used to
+// decode the literal string "hex" and crack three bytes, printing a confident
+// ranked table and exiting 0.
+void reject_unknown_options(const Command& command, const Args& args) {
+    for (const auto& entry : args.flags) {
+        if (!option_declared(command.options, entry.first)) {
+            throw Error("unknown option " + entry.first + " for '" + command.group +
+                        (command.command[0] == 0 ? "" : std::string(" ") + command.command) +
+                        "' (try: cryptrift help " + command.group + ")");
+        }
+    }
+}
+
 void write_group_help(const std::string& group, std::ostream& out) {
     out << "usage: cryptrift <group> <command> [options] [input]\n\n";
     std::string current;
@@ -43,7 +64,8 @@ void write_group_help(const std::string& group, std::ostream& out) {
             current = entry.group;
             out << current << "\n";
         }
-        out << "  " << entry.usage << "\n      " << entry.summary << "\n";
+        out << "  " << entry.usage << "\n      " << entry.summary << "\n"
+            << "      options: " << entry.options << "\n";
     }
     out << "\nFormats: raw, hex, b64, b32, bin, dec.\n"
         << "Exit codes: 0 produced a result, 1 found nothing, 2 usage error.\n";
@@ -133,6 +155,39 @@ std::size_t flag_size(const Args& args, const std::string& flag, std::size_t fal
 
 std::size_t flag_top(const Args& args) { return flag_size(args, "--top", 10); }
 
+namespace {
+
+// One parser for every whole-number option, so the range check cannot be
+// forgotten at one call site. Parsed as long long and then checked, because
+// long is 32 bits on some targets and 64 on others, and the accepted range of
+// an option should not depend on that.
+long long parse_whole(const Args& args, const std::string& flag, long long low,
+                      long long high) {
+    const std::string text = require(args, flag);
+    std::size_t consumed = 0;
+    long long value = 0;
+    try {
+        value = std::stoll(text, &consumed);
+    } catch (const std::exception&) {
+        throw Error(flag + " wants a whole number, got " + text);
+    }
+    if (consumed != text.size()) throw Error(flag + " wants a whole number, got " + text);
+    if (value < low || value > high) {
+        throw Error(flag + " is out of range: " + text);
+    }
+    return value;
+}
+
+}  // namespace
+
+int require_int(const Args& args, const std::string& flag) {
+    return static_cast<int>(parse_whole(args, flag, -2147483648LL, 2147483647LL));
+}
+
+std::uint32_t require_u32(const Args& args, const std::string& flag) {
+    return static_cast<std::uint32_t>(parse_whole(args, flag, 0LL, 4294967295LL));
+}
+
 long require_long(const Args& args, const std::string& flag) {
     const std::string text = require(args, flag);
     std::size_t consumed = 0;
@@ -211,7 +266,19 @@ int run(const std::vector<std::string>& argv_tail, std::istream& in, std::ostrea
                         "' (try: cryptrift help)");
         }
 
-        return command->handler(effective, in, out, err);
+        reject_unknown_options(*command, effective);
+
+        const int code = command->handler(effective, in, out, err);
+
+        // A write that failed must not be reported as success. Without this the
+        // tool exits 0 having emitted truncated output, which matters most for
+        // the pipeline this project is built around: `-q | base64 -d`.
+        out.flush();
+        if (!out) {
+            err << "cryptrift: failed to write output\n";
+            return kUsage;
+        }
+        return code;
     } catch (const std::exception& error) {
         err << "cryptrift: " << error.what() << "\n";
         return kUsage;

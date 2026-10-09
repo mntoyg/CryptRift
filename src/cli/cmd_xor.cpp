@@ -7,6 +7,7 @@
 
 #include <iomanip>
 #include <istream>
+#include <string>
 #include <ostream>
 
 namespace cryptrift {
@@ -75,6 +76,11 @@ int cmd_xor_crack(const Args& args, std::istream& in, std::ostream& out, std::os
     range.max = flag_size(args, "--keylen-max", range.max);
     if (range.min == 0) throw Error("--keylen-min must be at least 1");
     if (range.max < range.min) throw Error("--keylen-max must not be below --keylen-min");
+    // Two blocks of that length have to fit, or there is nothing to measure.
+    if (range.min > data.size() / 2) {
+        throw Error("--keylen-min is too large for " + std::to_string(data.size()) +
+                    " bytes of input; it must not exceed half of it");
+    }
 
     return render_or_report(crack_repeating(data, range, min_printable, top), args, out, err);
 }

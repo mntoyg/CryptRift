@@ -1,6 +1,7 @@
 #include <cryptrift/bignum.hpp>
 
 #include <cryptrift/error.hpp>
+#include <cryptrift/xor_tool.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -307,4 +308,79 @@ void run_bignum_mod_tests() {
     const Bignum value = Bignum::from_hex("deadbeefcafebabe0123456789abcdef");
     const Bignum inverse = modinv(value, prime);
     CT_CHECK_EQ(mod(mul(value, inverse), prime).to_dec(), std::string("1"));
+}
+
+void run_bignum_addback_tests() {
+    // These three divisions take the add-back correction in Knuth algorithm D:
+    // the quotient estimate comes out one too large, the multiply-and-subtract
+    // goes negative, and the divisor has to be added back.
+    //
+    // That branch fires roughly twice in 2^32 quotient digits, so random fuzzing
+    // never reaches it -- an instrumented run over 800,005 digits of random
+    // multi-limb division hit it zero times. It is also the branch whose failure
+    // would corrupt a quotient silently rather than crash, which is exactly the
+    // shape this project is organised against. So it is pinned by construction.
+    //
+    // Every quotient and remainder below was computed independently outside this
+    // repository before being written down.
+    struct Case {
+        const char* numerator;
+        const char* divisor;
+        const char* quotient;
+        const char* remainder;
+    };
+    static const Case cases[] = {
+        {"10000000000000001fffffffd", "8000000000000000ffffffff", "1", "8000000000000000fffffffe"},
+        {"18000000000000002fffffffc", "8000000000000000ffffffff", "2", "8000000000000000fffffffe"},
+        {"7fffffff80000000fffffffe00000000", "8000000000000000ffffffff", "fffffffe",
+         "8000000000000000fffffffe"},
+    };
+
+    for (const Case& item : cases) {
+        const Bignum numerator = Bignum::from_hex(item.numerator);
+        const Bignum divisor = Bignum::from_hex(item.divisor);
+        const cryptrift::DivResult result = divmod(numerator, divisor);
+
+        CT_CHECK_EQ(result.quot.to_hex(), std::string(item.quotient));
+        CT_CHECK_EQ(result.rem.to_hex(), std::string(item.remainder));
+        // And the defining property, independently of the expected values.
+        CT_CHECK_EQ(add(mul(result.quot, divisor), result.rem).to_hex(), numerator.to_hex());
+        CT_CHECK(compare(result.rem, divisor) < 0);
+    }
+}
+
+void run_bignum_absurd_root_tests() {
+    // A root larger than the value has bits can only be 0 or 1, and must be
+    // answered directly. Reaching Newton with k near 2^31 would try to raise a
+    // guess to that power, which is a number of billions of bits: the tool
+    // would hang while allocating rather than report that the attack does not
+    // apply.
+    cryptrift::RootResult root = iroot(Bignum(8), 2147483647);
+    CT_CHECK_EQ(root.root.to_dec(), std::string("1"));
+    CT_CHECK(!root.exact);
+
+    root = iroot(Bignum(1), 2147483647);
+    CT_CHECK_EQ(root.root.to_dec(), std::string("1"));
+    CT_CHECK(root.exact);
+
+    CT_CHECK(iroot(Bignum(0), 2147483647).root.is_zero());
+    CT_CHECK(iroot(Bignum(0), 2147483647).exact);
+
+    // Just inside the boundary it must still be the real root.
+    CT_CHECK_EQ(iroot(Bignum(256), 8).root.to_dec(), std::string("2"));
+    CT_CHECK(iroot(Bignum(256), 8).exact);
+    CT_CHECK_EQ(iroot(Bignum(255), 8).root.to_dec(), std::string("1"));
+    CT_CHECK(!iroot(Bignum(255), 8).exact);
+
+    // A key length beyond the data must not read past the end of it.
+    CT_CHECK(cryptrift::guess_key_lengths(cryptrift::from_string("abcdefgh"),
+                                          cryptrift::KeyLenRange{9223372036854775808ull,
+                                                                 9223372036854775809ull},
+                                          3)
+                 .empty());
+    CT_CHECK(cryptrift::crack_repeating(cryptrift::from_string("abcdefgh"),
+                                        cryptrift::KeyLenRange{9223372036854775808ull,
+                                                               9223372036854775809ull},
+                                        0.0, 3)
+                 .empty());
 }

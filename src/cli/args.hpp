@@ -9,6 +9,7 @@
 #include <cryptrift/codec.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <iosfwd>
 #include <map>
 #include <string>
@@ -58,6 +59,12 @@ std::size_t flag_size(const Args& args, const std::string& flag, std::size_t fal
 // A required signed whole number, such as --shift or --a. Throws Error when
 // absent, empty, or trailed by anything that is not a digit.
 long require_long(const Args& args, const std::string& flag);
+
+// Range-checked narrowings. Without these a value is silently truncated to
+// the target type: 4294967297 becomes 1, and the tool then reports the
+// ciphertext back as if it were the message.
+int require_int(const Args& args, const std::string& flag);
+std::uint32_t require_u32(const Args& args, const std::string& flag);
 
 int run(const std::vector<std::string>& argv_tail, std::istream& in, std::ostream& out,
         std::ostream& err);

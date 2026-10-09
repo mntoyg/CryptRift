@@ -21,9 +21,15 @@ binary). Plus `ct_tests` and `ct_selftest`.
 
 ## The one hard rule
 
-**`src/core/` performs no I/O.** No `argv`, no `std::cin`, no `std::cout`, no
-`exit`. Core functions take values and return values or throw. Everything the
-user sees is produced in `src/cli/`.
+**`src/core/` never touches `argv`, the standard streams, or `exit`.** Core
+functions take values and return values or throw. Everything the user sees is
+produced in `src/cli/`.
+
+The rule is stated that precisely on purpose. `bytes.cpp` does open and read a
+file, which is I/O in the broad sense; what core must never do is decide what to
+read from the command line, write to a stream the user is watching, or end the
+process. Reading *stdin* is the CLI's job even so, because putting a stream into
+binary mode is a property of the program's environment rather than of a value.
 
 This is not tidiness. It is what lets every attack be tested as a direct
 function call, asserting on a structured result, instead of by running the

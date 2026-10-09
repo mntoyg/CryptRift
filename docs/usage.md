@@ -96,6 +96,13 @@ scored above the true answer before the penalty was added.
 The recovered key is also reduced to its smallest period, so a correct plaintext
 is never reported under a doubled key such as `RIFTRIFT`.
 
+The range is a filter, not a promise to try every length in it: the five most
+likely lengths in that range are solved and ranked. In practice the Hamming
+heuristic puts multiples of the true length at the top, and the smallest-period
+reduction turns any of them back into the real key — but if the true length
+ranks sixth or worse, widen nothing and instead narrow the range around the
+length you suspect.
+
 Pipe the winner into something else with `-q`:
 
 ```console

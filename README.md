@@ -114,8 +114,8 @@ understanding how the mathematics works. Do not protect anything with it.
 ## Design
 
 The architecture, the module dependency order, and the rule that `src/core/`
-performs no I/O are in [docs/design.md](docs/design.md), with the full
-reasoning in
+never touches `argv`, the standard streams or `exit` are in
+[docs/design.md](docs/design.md), with the full reasoning in
 [docs/superpowers/specs/2026-10-09-cryptrift-design.md](docs/superpowers/specs/2026-10-09-cryptrift-design.md).
 
 Contributions: [CONTRIBUTING.md](CONTRIBUTING.md). The short version is that a

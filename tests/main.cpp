@@ -15,6 +15,7 @@ int main(int argc, char** argv) {
     run_bytes_tests();
     run_codec_tests();
     run_codec_dec_tests();
+    run_codec_unpadded_tests();
     run_args_tests();
     run_cli_tests();
     run_flag_tests();
@@ -23,6 +24,10 @@ int main(int argc, char** argv) {
     run_cli_rsa_tests();
     run_cli_analyze_tests();
     run_cli_help_tests();
+    run_cli_strict_option_tests();
+    run_cli_absurd_value_tests();
+    run_require_int_tests();
+    run_write_failure_tests();
     run_analyze_tests();
     run_require_long_tests();
     run_score_tests();
@@ -33,6 +38,8 @@ int main(int argc, char** argv) {
     run_bignum_arith_tests();
     run_bignum_div_tests();
     run_bignum_mod_tests();
+    run_bignum_addback_tests();
+    run_bignum_absurd_root_tests();
     run_xor_tests();
     run_xor_repeating_tests();
 
