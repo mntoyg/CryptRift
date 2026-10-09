@@ -57,6 +57,18 @@ std::optional<Bignum> small_e_root(const Bignum& ciphertext, std::uint32_t e);
 Bignum common_modulus(const Bignum& n, const Bignum& e1, const Bignum& c1, const Bignum& e2,
                       const Bignum& c2);
 
+// Wiener's attack: recovers d when it is small relative to n, by walking the
+// convergents of the continued fraction of e/n.
+//
+// This is the function the "verify before you report" rule in this header was
+// written for. The expansion offers many candidate exponents and nearly all of
+// them are wrong, so each one is put through three independent checks -- the
+// implied phi must divide exactly, the quadratic it implies must factor n, and
+// the exponent must round-trip a probe message -- before anything is returned.
+// Exhausting the convergents means the attack does not apply, and that is
+// reported as nothing rather than as the least-wrong guess.
+std::optional<Bignum> wiener(const Bignum& n, const Bignum& e);
+
 }  // namespace cryptrift
 
 #endif  // CRYPTRIFT_RSA_HPP

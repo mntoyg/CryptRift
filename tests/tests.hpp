@@ -13,6 +13,7 @@ void run_cli_xor_tests();
 void run_require_long_tests();
 void run_flag_tests();
 void run_rsa_attack_tests();
+void run_rsa_wiener_tests();
 void run_rsa_basic_tests();
 void run_score_tests();
 void run_bignum_arith_tests();

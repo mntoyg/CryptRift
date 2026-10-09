@@ -107,3 +107,37 @@ void run_rsa_attack_tests() {
     CT_CHECK_THROWS(cryptrift::common_modulus(n, e1, add(c1, Bignum(1)), e2, c2),
                     cryptrift::Error);
 }
+
+void run_rsa_wiener_tests() {
+    // A key whose private exponent is small enough for Wiener to reach: 127
+    // bits against a 512-bit modulus, inside the one-third-of-the-fourth-root
+    // bound.
+    const Bignum n = Bignum::from_dec(fixtures::kWienerN);
+    const Bignum e = Bignum::from_dec(fixtures::kWienerE);
+    const Bignum d = Bignum::from_dec(fixtures::kWienerD);
+
+    const auto found = cryptrift::wiener(n, e);
+    CT_CHECK(found.has_value());
+    if (found.has_value()) {
+        CT_CHECK_EQ(found->to_dec(), d.to_dec());
+
+        // And the recovered exponent actually decrypts, which is the property
+        // that matters rather than matching a number in a fixture.
+        const Bignum probe(42);
+        CT_CHECK_EQ(cryptrift::decrypt(cryptrift::encrypt(probe, e, n), *found, n).to_dec(),
+                    std::string("42"));
+    }
+
+    // A safe key: Wiener must give up. This is the important assertion in the
+    // file -- the continued fraction offers many candidates and almost all are
+    // wrong, so an unverified "success" here is exactly the failure this
+    // project is organised against.
+    const Bignum safe_n = Bignum::from_dec(fixtures::kN);
+    CT_CHECK(!cryptrift::wiener(safe_n, Bignum(65537)).has_value());
+
+    // The textbook key is small but its d is not: n^0.25 is under 8, d is 2753.
+    CT_CHECK(!cryptrift::wiener(Bignum(3233), Bignum(17)).has_value());
+
+    CT_CHECK_THROWS(cryptrift::wiener(Bignum(0), Bignum(17)), cryptrift::Error);
+    CT_CHECK_THROWS(cryptrift::wiener(Bignum(3233), Bignum(0)), cryptrift::Error);
+}
